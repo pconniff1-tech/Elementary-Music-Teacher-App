@@ -6,3 +6,4 @@ out/
 *.db-wal
 userData/
 .env
+secrets.js

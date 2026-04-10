@@ -10,11 +10,14 @@ let mainWindowRef = null;
 if (app.isPackaged) {
   autoUpdater = require('electron-updater').autoUpdater;
   autoUpdater.autoDownload = false;
+  const secrets = app.isPackaged
+    ? require(require('path').join(process.resourcesPath, 'secrets.js'))
+    : require('./secrets');
   autoUpdater.setFeedURL({
     provider: 'github',
     owner: 'pconniff1-tech',
     repo: 'Elementary-Music-Teacher-App',
-    token: 'PASTE_TOKEN_HERE'
+    token: secrets.GH_TOKEN
   });
   autoUpdater.on('update-available', (info) => {
     mainWindowRef?.webContents.send('update-available', info.version);
