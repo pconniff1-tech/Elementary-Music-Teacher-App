@@ -1,0 +1,52 @@
+{
+  "name": "elementary-music-management-app",
+  "version": "1.0.0",
+  "description": "Elementary Music Management App",
+  "main": "app.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dist": "electron-builder --win"
+  },
+  "keywords": [],
+  "author": "pconniff1-tech",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "better-sqlite3": "^12.8.0",
+    "electron": "^41.0.4"
+  },
+  "devDependencies": {
+    "electron-builder": "^25.1.8",
+    "electron-rebuild": "^3.2.9",
+    "electron-updater": "^6.8.3"
+  },
+  "build": {
+    "appId": "com.pconniff1tech.elementarymusicapp",
+    "productName": "Elementary Music Teacher App",
+    "copyright": "Copyright © 2026 pconniff1-tech",
+    "publish": {
+      "provider": "github",
+      "owner": "pconniff1-tech",
+      "repo": "Elementary-Music-Teacher-App"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "icons/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "files": [
+      "**/*",
+      "!node_modules/electron-builder/**",
+      "!dist/**",
+      "!out/**",
+      "!*.db",
+      "!userData/**"
+    ]
+  }
+}

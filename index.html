@@ -1,0 +1,3977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elementary Music Management</title>
+  <style>
+    @font-face {
+      font-family: 'open sans';
+      src: url('fonts/OpenSans-Light.ttf') format('truetype');
+      font-weight: 300;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'open sans';
+      src: url('fonts/OpenSans-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'open sans';
+      src: url('fonts/OpenSans-Medium.ttf') format('truetype');
+      font-weight: 500;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'open sans';
+      src: url('fonts/OpenSans-Bold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'roboto';
+      src: url('fonts/Roboto-Light.ttf') format('truetype');
+      font-weight: 300;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'roboto';
+      src: url('fonts/Roboto-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'roboto';
+      src: url('fonts/Roboto-Medium.ttf') format('truetype');
+      font-weight: 500;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: 'roboto';
+      src: url('fonts/Roboto-Bold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+    }
+    :root {
+      --bg: #f7f3ea;
+      --surface: rgba(224, 216, 200, 0.94);
+      --surface-strong: #fffdf8;
+      --ink: #253038;
+      --muted: #687780;
+      --line: rgba(61, 82, 92, 0.16);
+      --accent: #1f7a6b;
+      --accent-strong: #14584d;
+      --gold: #d8a54a;
+      --shadow: 0 20px 45px rgba(71, 61, 42, 0.14);
+      --focus-ring: 0 0 0 3px rgba(31, 122, 107, 0.18);
+      --border: 1px solid #000;
+      --border-card-btn: 1px solid rgba(58, 76, 85, 0.45);
+      --radius-btn: 999px;
+      --ring: 0 0 0 3px rgba(31, 122, 107, 0.55);
+      --outline-hover: 2px solid rgba(31, 122, 107, 0.45);
+      --outline-active: 2px solid rgba(31, 122, 107, 0.55);
+      --outline-danger: 1px solid rgba(139, 45, 31, 0.5);
+      --outline-danger-hover: 2px solid rgba(139, 45, 31, 0.6);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(216, 165, 74, 0.26), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(31, 122, 107, 0.2), transparent 32%),
+        linear-gradient(135deg, #efe7d8 0%, #f7f3ea 42%, #e8efe9 100%);
+      overflow: hidden;
+    }
+
+    button, input, textarea {
+      font: inherit;
+    }
+
+    button {
+      border: var(--border);
+    }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr) 320px;
+      gap: 18px;
+      height: 100dvh;
+      min-height: 100dvh;
+      padding: 18px;
+      overflow: hidden;
+    }
+
+    .panel {
+      position: relative;
+      background: var(--surface);
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      min-height: 0;
+    }
+
+    .sidebar {
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    .brand-block {
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .academic-year-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .academic-year-label {
+      font-size: 0.78rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .academic-year-display {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .academic-year-select {
+      font-size: 0.82rem;
+      padding: 3px 6px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .csv-year-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .csv-year-label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .imma-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px 6px;
+    }
+
+    .imma-year-label {
+      font-size: 0.82rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .imma-year-select {
+      font-size: 0.82rem;
+      padding: 3px 6px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .imma-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    .imma-table th {
+      padding: 6px 10px;
+      background: rgba(31, 122, 107, 0.08);
+      text-align: left;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--line);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .imma-table td {
+      padding: 5px 10px;
+      border-bottom: 1px solid rgba(58, 76, 85, 0.08);
+      vertical-align: middle;
+    }
+
+    .imma-table tr:hover td {
+      background: rgba(31, 122, 107, 0.04);
+    }
+
+    .imma-th-score,
+    .imma-td-score {
+      text-align: center;
+      width: 80px;
+    }
+
+    .imma-score-input {
+      width: 60px;
+      padding: 3px 6px;
+      font-size: 0.88rem;
+      text-align: center;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--ink);
+    }
+
+    .imma-score-input:focus {
+      outline: 2px solid var(--accent-strong);
+      border-color: transparent;
+    }
+
+    .imma-empty {
+      padding: 24px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .detail-imma-section {
+      margin-top: 10px;
+    }
+
+    .detail-imma-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .detail-imma-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+
+    .detail-imma-table th,
+    .detail-imma-table td {
+      padding: 2px 6px;
+      text-align: left;
+    }
+
+    .detail-imma-table th {
+      color: var(--muted);
+      font-weight: normal;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+    }
+
+    .detail-imma-table tr:not(:last-child) td {
+      border-bottom: 1px solid rgba(58, 76, 85, 0.1);
+    }
+
+    .eyebrow {
+      font-size: 0.78rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    h1, h2, h3, p {
+      margin: 0;
+    }
+
+    .brand-block h1 {
+      font-size: 1.85rem;
+      line-height: 1.05;
+      margin-bottom: 10px;
+    }
+
+    .brand-block p,
+    .sidebar-copy,
+    .stats-copy,
+    .detail-copy,
+    .empty-copy,
+    .surface-copy {
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 0.95rem;
+    }
+
+    .sidebar-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .sidebar-section h2,
+    .roster-panel h2,
+    .workspace-top h2 {
+      font-size: 1.02rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: #3a4c55;
+    }
+
+    .button-stack {
+      display: grid;
+      gap: 10px;
+      overflow: visible;
+      padding: 2px;
+      margin: -2px;
+    }
+
+    .action-btn,
+    .sub-action-btn,
+    .chart-tool-btn,
+    .pill-btn,
+    .btn-primary,
+    .btn-cancel,
+    .ghost-btn {
+      border-radius: var(--radius-btn);
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+      min-height: 42px;
+      text-align: center;
+      /* Match .view-pill height and shape */
+    }
+
+    .action-btn,
+    .sub-action-btn,
+    .chart-tool-btn,
+    .ghost-btn,
+    .pill-btn {
+      padding: 13px 18px 9px;
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--ink);
+      text-align: center;
+      font-size: 0.95rem;
+    }
+
+    .action-btn strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--ink);
+      font-size: 0.98rem;
+    }
+
+    .action-btn span {
+      display: block;
+      font-size: 0.82rem;
+      color: var(--ink);
+      line-height: 1.35;
+    }
+
+    .action-btn:hover,
+    .sub-action-btn:hover,
+    .chart-tool-btn:hover,
+    .ghost-btn:hover,
+    .pill-btn:hover {
+      box-shadow: var(--ring);
+      /* No lift effect, just green halo */
+    }
+
+    /* Remove shadow from .action-btn:hover if immediately followed by a visible .sub-action-btn */
+    .action-btn:hover:has(+ .sub-action-btn:not(.hidden):hover),
+    .action-btn:hover:has(+ .sub-action-btn:not(.hidden):focus),
+    .action-btn:hover:has(+ .sub-action-btn:not(.hidden):focus-visible),
+    .action-btn:hover:has(+ .sub-action-btn:not(.hidden).active) {
+      box-shadow: none;
+    }
+
+    .action-btn:focus-visible,
+    .pill-btn:focus-visible,
+    .btn-primary:focus-visible,
+    .btn-cancel:focus-visible,
+    .ghost-btn:focus-visible,
+    .search-input:focus-visible,
+    .form-group input:focus-visible,
+    .form-group textarea:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+
+    .action-btn.active,
+    .sub-action-btn.active,
+    .chart-tool-btn.active {
+      background: rgba(31, 122, 107, 0.14);
+      color: var(--accent-strong);
+      box-shadow: var(--ring);
+    }
+
+    .action-btn.active strong {
+      color: var(--accent-strong);
+    }
+
+    .sub-action-btn,
+    .chart-tool-btn {
+      margin-left: 14px;
+      width: calc(100% - 14px);
+      position: relative;
+      z-index: 2;
+      margin-top: 0;
+      padding: 2px 10px !important;
+      font-size: 0.92rem;
+      line-height: 1.1;
+      min-height: unset !important;
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    /* Add space above the first and below the last VISIBLE sub-action/chart-tool button in each stack */
+    .chart-tools-submenu > button.first-visible,
+    .manage-students-submenu > button.first-visible {
+      margin-top: 11px;
+    }
+    .chart-tools-submenu > button:last-child,
+    .manage-students-submenu > button:last-child {
+      margin-bottom: 11px;
+    }
+
+    .sub-action-btn:hover,
+    .sub-action-btn:focus,
+    .sub-action-btn:focus-visible,
+    .sub-action-btn.active,
+    .chart-tool-btn:hover,
+    .chart-tool-btn:focus,
+    .chart-tool-btn:focus-visible,
+    .chart-tool-btn.active {
+      z-index: 10;
+    }
+
+    .sub-action-pair {
+      margin-left: 14px;
+      width: calc(100% - 14px);
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .sub-action-pair .action-btn {
+      margin-left: 0;
+      width: 100%;
+      padding: 10px 10px;
+      text-align: center;
+    }
+
+    .sub-action-pair .action-btn strong {
+      margin-bottom: 0;
+      font-size: 0.84rem;
+      line-height: 1.15;
+    }
+
+    .chart-tool-btn {
+      padding: 1px 8px;
+    }
+
+    .chart-tool-btn strong {
+      margin-bottom: 0;
+      font-size: 0.88rem;
+      line-height: 1.2;
+    }
+
+    .chart-tools-submenu {
+      display: grid;
+      gap: 10px;
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.32s ease, opacity 0.22s ease;
+      padding: 0 2px;
+    }
+
+    .chart-tools-submenu.open {
+      max-height: 510px;
+      opacity: 1;
+      padding: 2px;
+    }
+
+    #undo-clear-chart-btn {
+      margin-left: 24px;
+      width: calc(100% - 24px);
+      background: rgba(251, 237, 234, 0.82);
+      outline: var(--outline-danger);
+      outline-offset: 0;
+      color: #6f2a1f;
+    }
+
+    #undo-clear-chart-btn span {
+      color: #8a4539;
+    }
+
+    #undo-clear-chart-btn:hover {
+      background: rgba(251, 237, 234, 0.95);
+      outline: var(--outline-danger-hover);
+      outline-offset: 0;
+    }
+
+    .detail-card {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.82);
+      border: var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .detail-name {
+      font-size: 1.15rem;
+    }
+
+    .detail-meta {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .detail-state {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(31, 122, 107, 0.12);
+      color: var(--accent-strong);
+      font-size: 0.84rem;
+      text-transform: capitalize;
+    }
+
+    .main-panel {
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      max-width: 100%;
+      min-height: 0;
+      padding: 20px;
+      gap: 18px;
+      overflow: hidden;
+    }
+
+    .workspace-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 4px 4px 0;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .roster-filters {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .roster-filters .pill-btn {
+      text-align: center;
+      width: 100%;
+    }
+
+    .pill-btn {
+      padding: 10px 16px;
+      border-radius: var(--radius-btn);
+      font-size: 0.9rem;
+    }
+
+    .pill-btn.active {
+      background: rgba(31, 122, 107, 0.12);
+      outline: var(--outline-active);
+      outline-offset: 0;
+      color: var(--accent-strong);
+    }
+
+    .view-selector {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .view-pill {
+      padding: 11px 14px;
+      border-radius: var(--radius-btn);
+      font-size: 0.78rem;
+      background: rgba(255, 255, 255, 0.6);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.18s ease;
+      width: 100%;
+      text-align: center;
+    }
+
+    .view-pill:hover {
+      background: rgba(255, 255, 255, 0.78);
+      color: var(--ink);
+    }
+
+    .view-pill.active {
+      background: rgba(31, 122, 107, 0.12);
+      color: var(--accent-strong);
+      font-weight: 500;
+      box-shadow: var(--ring);
+    }
+
+    .unit-pill-row {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .unit-icon-btn {
+      width: 36px;
+      min-width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.92);
+      color: #2f464f;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.16s ease, outline 0.16s ease;
+    }
+
+    .unit-icon-btn:hover {
+      outline: var(--outline-hover);
+      outline-offset: 0;
+      background: rgba(242, 251, 248, 0.98);
+    }
+
+    .unit-icon-btn svg {
+      width: 18px;
+      height: 18px;
+      display: block;
+      fill: currentColor;
+    }
+    .unit-image-hint {
+      position: absolute;
+      right: calc(100% + 10px);
+      top: 50%;
+      transform: translateY(-50%);
+      width: 132px;
+      padding: 6px;
+      border-radius: 10px;
+      border: 1px solid rgba(58, 76, 85, 0.2);
+      background: rgba(255, 255, 255, 0.98);
+      box-shadow: 0 12px 22px rgba(37, 47, 56, 0.2);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease;
+      z-index: 90;
+    }
+
+    .unit-pill-row.has-preview:hover .unit-image-hint {
+      opacity: 1;
+    }
+
+    .unit-image-hint-img {
+      display: block;
+      width: 100%;
+      height: 90px;
+      object-fit: contain;
+      border-radius: 8px;
+      background: rgba(246, 250, 248, 0.95);
+    }
+
+    .view-container {
+      display: none;
+      padding: 10px 12px;
+      min-width: 0;
+      max-width: 100%;
+      height: 100%;
+      min-height: 0;
+    }
+
+    .view-container.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .workspace-grid {
+      display: grid;
+      grid-template-rows: minmax(0, 1fr);
+      min-width: 0;
+      min-height: 0;
+      flex: 1;
+    }
+
+    .status-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .attendance-summary {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid var(--line);
+    }
+
+    .summary-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: nowrap;
+    }
+
+    .app-settings {
+      position: relative;
+      flex: 0 0 auto;
+      align-self: center;
+      z-index: 20;
+    }
+
+    .settings-gear-btn {
+      width: 30px;
+      height: 30px;
+      min-width: 30px;
+      min-height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.92);
+      color: #2e4751;
+      cursor: pointer;
+      transition: transform 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .settings-gear-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(45, 58, 63, 0.15);
+    }
+
+    .settings-dropdown {
+      position: absolute;
+      top: 36px;
+      right: 0;
+      width: 240px;
+      padding: 8px;
+      border-radius: 12px;
+      border: 1px solid rgba(58, 76, 85, 0.18);
+      background: rgba(255, 255, 255, 0.98);
+      box-shadow: 0 16px 30px rgba(36, 53, 61, 0.2);
+      display: grid;
+      gap: 8px;
+    }
+
+    .settings-font-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: var(--border-card-btn);
+      background: #fff;
+      font-size: 0.84rem;
+      color: #22353d;
+    }
+
+    .settings-font-row label {
+      flex-shrink: 0;
+      font-size: 0.84rem;
+      color: #22353d;
+    }
+
+    .settings-font-select {
+      flex: 1;
+      min-width: 0;
+      padding: 3px 6px;
+      border-radius: 6px;
+      border: var(--border-card-btn);
+      font-size: 0.84rem;
+      font-family: inherit;
+      background: #f7f7f7;
+      color: #22353d;
+      cursor: pointer;
+    }
+
+    .settings-action-btn {
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #fff;
+      color: #22353d;
+      cursor: pointer;
+      font-size: 0.84rem;
+      transition: background 0.16s ease, outline 0.16s ease;
+    }
+
+    .settings-action-btn:hover {
+      background: rgba(247, 253, 251, 0.95);
+    }
+
+    .settings-action-btn.danger {
+      outline: var(--outline-danger);
+      outline-offset: 0;
+      color: #7f2c1f;
+      background: rgba(251, 237, 234, 0.7);
+    }
+
+    .settings-action-btn.danger:hover {
+      outline: var(--outline-danger-hover);
+      outline-offset: 0;
+      background: rgba(251, 237, 234, 0.96);
+    }
+
+    .settings-divider {
+      height: 1px;
+      background: rgba(58, 76, 85, 0.12);
+      margin: 0 4px;
+    }
+
+    .update-status-line {
+      font-size: 0.78rem;
+      color: #44626c;
+      padding: 4px 12px 2px;
+      text-align: center;
+    }
+
+    .update-status-line.success { color: #1f7a6b; }
+    .update-status-line.error   { color: #a53f2b; }
+
+    .summary-row .attendance-summary {
+      flex: 1 1 0;
+    }
+
+    .summary-row .attendance-summary:first-child {
+      justify-content: flex-start;
+    }
+
+    .summary-row .attendance-summary:last-of-type {
+      justify-content: flex-end;
+    }
+
+    .chart-teacher-label {
+      flex: 1;
+      text-align: center;
+      font-size: 1.64rem;
+      font-weight: 600;
+      color: #3a4c55;
+      white-space: nowrap;
+      opacity: 0.75;
+    }
+
+    .chart-teacher-label:empty {
+      display: none;
+    }
+
+    .summary-row .eyebrow {
+      margin: 0;
+      flex: 0 0 auto;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .attendance-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid rgba(58, 76, 85, 0.12);
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .attendance-chip strong {
+      font-size: 0.92rem;
+      color: var(--ink);
+    }
+
+    .status-card {
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid var(--line);
+    }
+
+    .status-value {
+      font-size: 1.65rem;
+      margin-top: 4px;
+      margin-bottom: 6px;
+    }
+
+    .chart-shell {
+      position: relative;
+      min-height: 0;
+      height: 100%;
+      border-radius: 28px;
+      border: 1px dashed rgba(58, 76, 85, 0.24);
+      background:
+        linear-gradient(rgba(255,255,255,0.5), rgba(255,255,255,0.5)),
+        linear-gradient(90deg, rgba(58, 76, 85, 0.05) 1px, transparent 1px),
+        linear-gradient(rgba(58, 76, 85, 0.05) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(232, 245, 241, 0.9), rgba(250, 247, 240, 0.92));
+      background-size: auto, 72px 72px, 72px 72px, auto;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .attendance-grid-shell {
+      position: relative;
+      width: 100%;
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      border-radius: 28px;
+      border: 1px solid rgba(58, 76, 85, 0.2);
+      background: linear-gradient(180deg, rgba(248, 251, 250, 0.96), rgba(253, 250, 244, 0.95));
+      overflow: hidden;
+      padding: 14px;
+    }
+
+    .gradebook-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .gradebook-subtitle {
+      font-size: 0.78rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #47606a;
+      margin-bottom: 2px;
+    }
+
+    .gradebook-tab {
+      padding: 8px 14px;
+      border-radius: var(--radius-btn);
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.82rem;
+      transition: background 0.18s ease, outline 0.18s ease, color 0.18s ease;
+    }
+
+    .gradebook-tab:hover {
+      background: rgba(255, 255, 255, 0.9);
+      outline: 1px solid rgba(31, 122, 107, 0.4);
+      outline-offset: 0;
+      color: var(--ink);
+    }
+
+    .gradebook-tab.active {
+      background: rgba(31, 122, 107, 0.12);
+      outline: var(--outline-active);
+      outline-offset: 0;
+      color: var(--accent-strong);
+      font-weight: 600;
+    }
+
+    .gradebook-tab-panel {
+      display: none;
+      width: 100%;
+      min-width: 0;
+      min-height: 0;
+      flex: 1;
+    }
+
+    .gradebook-tab-panel.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .gradebook-tab-panel .attendance-grid-wrap {
+      flex: 1;
+      height: auto;
+      min-height: 0;
+    }
+
+    .attendance-grid-wrap {
+      width: 100%;
+      min-width: 0;
+      height: 100%;
+      overflow: auto;
+      border-radius: 16px;
+      border: 1px solid rgba(58, 76, 85, 0.2);
+      background: rgba(255, 255, 255, 0.85);
+      scrollbar-color: rgba(31, 122, 107, 0.7) rgba(223, 232, 228, 0.95);
+      scrollbar-width: thin;
+    }
+
+    .attendance-grid-wrap::-webkit-scrollbar {
+      width: 12px;
+      height: 12px;
+    }
+
+    #gradebook-lsa-panel .attendance-grid-wrap {
+      scrollbar-width: auto;
+    }
+
+    #gradebook-lsa-panel .attendance-grid-wrap::-webkit-scrollbar {
+      width: 12px;
+      height: 18px;
+    }
+
+    .attendance-grid-wrap::-webkit-scrollbar-track {
+      background: rgba(223, 232, 228, 0.95);
+      border-radius: 999px;
+      border: 1px solid rgba(58, 76, 85, 0.15);
+    }
+
+    .attendance-grid-wrap::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, rgba(31, 122, 107, 0.78), rgba(20, 88, 77, 0.85));
+      border-radius: 999px;
+      border: 2px solid rgba(223, 232, 228, 0.95);
+    }
+
+    .attendance-grid-wrap::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, rgba(31, 122, 107, 0.88), rgba(20, 88, 77, 0.96));
+    }
+
+    .attendance-grid {
+      width: max-content;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 0.82rem;
+    }
+
+    .lsa-grid {
+      table-layout: fixed;
+      width: max-content;
+    }
+
+    .attendance-grid thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #eef4f1;
+      color: #2f464f;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 0.72rem;
+    }
+
+    .attendance-grid th,
+    .attendance-grid td {
+      border-right: 1px solid rgba(58, 76, 85, 0.14);
+      border-bottom: 1px solid rgba(58, 76, 85, 0.14);
+      padding: 8px 10px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .recorder-color-select {
+      width: 100%;
+      border: 1px solid rgba(58, 76, 85, 0.18);
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 0.8rem;
+      color: #223139;
+      background: rgba(255, 255, 255, 0.8);
+    }
+
+    .recorder-color-select:focus-visible {
+      outline: none;
+      box-shadow: var(--focus-ring);
+    }
+
+    .attendance-grid th:nth-child(n+4),
+    .attendance-grid td:nth-child(n+4) {
+      width: 8ch;
+      min-width: 8ch;
+      max-width: 8ch;
+      padding-left: 6px;
+      padding-right: 6px;
+    }
+
+    .lsa-grid th:nth-child(n+4),
+    .lsa-grid td:nth-child(n+4) {
+      width: var(--lsa-col-width, 34px);
+      min-width: var(--lsa-col-width, 34px);
+      max-width: var(--lsa-col-width, 34px);
+      padding-left: 2px;
+      padding-right: 2px;
+    }
+
+    /* In the second LSA header row, all E/M/D cells should use narrow fixed width */
+    .lsa-grid thead tr:nth-child(2) th {
+      width: var(--lsa-col-width, 34px);
+      min-width: var(--lsa-col-width, 34px);
+      max-width: var(--lsa-col-width, 34px);
+      padding-left: 2px;
+      padding-right: 2px;
+    }
+
+    .lsa-grid td.lsa-cell {
+      overflow: hidden;
+    }
+
+    .lsa-grid thead tr:first-child th {
+      top: 0;
+      z-index: 4;
+      background: #e2ece7;
+    }
+
+    .lsa-grid thead tr:nth-child(2) th {
+      top: 30px;
+      z-index: 3;
+    }
+
+    /* Keep first three sticky columns above grouped LSA headers in two-row head */
+    .lsa-grid thead tr:first-child th:nth-child(1),
+    .lsa-grid thead tr:first-child th:nth-child(2),
+    .lsa-grid thead tr:first-child th:nth-child(3) {
+      z-index: 6;
+      background: #e8f0ec;
+    }
+
+    /* Second header row cells should not inherit left-sticky column rules */
+    .lsa-grid thead tr:nth-child(2) th {
+      left: auto;
+    }
+
+    .attendance-grid th:first-child,
+    .attendance-grid td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      background: #f7fbf9;
+      text-align: center;
+      width: var(--att-col0-width, 52px);
+      min-width: var(--att-col0-width, 52px);
+      max-width: var(--att-col0-width, 52px);
+    }
+
+    .attendance-grid th:nth-child(2),
+    .attendance-grid td:nth-child(2) {
+      position: sticky;
+      left: var(--att-col0-width, 52px);
+      z-index: 1;
+      background: #f7fbf9;
+      text-align: left;
+      width: var(--att-col1-width, 132px);
+      min-width: var(--att-col1-width, 132px);
+      max-width: var(--att-col1-width, 132px);
+    }
+
+    .attendance-grid th:nth-child(3),
+    .attendance-grid td:nth-child(3) {
+      position: sticky;
+      left: calc(var(--att-col0-width, 52px) + var(--att-col1-width, 132px));
+      z-index: 1;
+      background: #f7fbf9;
+      text-align: left;
+      width: var(--att-col2-width, 132px);
+      min-width: var(--att-col2-width, 132px);
+      max-width: var(--att-col2-width, 132px);
+    }
+
+    .attendance-grid thead th:first-child,
+    .attendance-grid thead th:nth-child(2),
+    .attendance-grid thead th:nth-child(3) {
+      z-index: 3;
+      background: #e8f0ec;
+    }
+
+    .attendance-cell.present {
+      background: rgba(31, 122, 107, 0.16);
+      color: #14584d;
+      font-weight: 600;
+    }
+
+    .attendance-cell.absent {
+      background: rgba(180, 78, 64, 0.16);
+      color: #8a2f1f;
+      font-weight: 600;
+    }
+
+    .attendance-cell.late {
+      background: rgba(212, 176, 54, 0.2);
+      color: #8b7300;
+      font-weight: 600;
+    }
+
+    .lsa-cell.teacher {
+      background: rgba(30, 78, 168, 0.24);
+      color: #123a7a;
+      font-weight: 600;
+    }
+
+    .lsa-cell.eval {
+      background: rgba(20, 88, 77, 0.24);
+      color: #0f3f36;
+      font-weight: 600;
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    .lsa-mark {
+      display: inline-block;
+      width: 0.72em;
+      min-width: 0.72em;
+      text-align: center;
+      box-sizing: border-box;
+      transform-origin: center;
+      font-size: 0.78rem;
+      line-height: 1;
+      text-shadow: 0.2px 0.2px 0 rgba(20, 24, 28, 0.28);
+    }
+
+    .lsa-mark-teacher {
+      transform: rotate(14deg) skewX(5deg);
+    }
+
+    .lsa-mark-eval {
+      transform: rotate(11deg) skewX(6deg);
+    }
+
+    /* Emphasize each E/M/D unit group boundary in the LSA sheet */
+    .lsa-grid thead tr:first-child th[colspan="3"] {
+      border-right: 2px solid rgba(58, 76, 85, 0.32);
+    }
+
+    .lsa-grid thead tr:nth-child(2) th:nth-child(3n),
+    .lsa-grid tbody td:nth-child(3n):nth-child(n+6) {
+      border-right: 2px solid rgba(58, 76, 85, 0.32);
+    }
+
+    .lsa-cell.readonly {
+      opacity: 0.82;
+      cursor: not-allowed;
+    }
+
+    .attendance-editable {
+      cursor: pointer;
+      transition: background-color 0.14s ease;
+    }
+
+    .attendance-editable:hover {
+      box-shadow: inset 0 0 0 1px rgba(58, 76, 85, 0.25);
+    }
+
+    .attendance-empty {
+      display: grid;
+      place-items: center;
+      height: 100%;
+      color: var(--muted);
+      font-size: 0.9rem;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .chart-stage {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 4;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #506778 20%, #304b5f 50%, #506778 80%, transparent);
+      overflow: visible;
+    }
+
+    .chart-stage::after {
+      content: 'Front of Room';
+      position: absolute;
+      bottom: 7px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.62rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #506778;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .chart-canvas {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1100px;
+      height: 720px;
+      z-index: 1;
+      padding: 22px 22px 24px;
+      transform-origin: 0 0;
+    }
+
+    .zoom-reset-btn {
+      position: absolute;
+      bottom: 14px;
+      right: 14px;
+      z-index: 10;
+      padding: 5px 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.92);
+      color: #3a4c55;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(58, 76, 85, 0.12);
+      transition: background 0.15s ease, opacity 0.15s ease, outline 0.15s ease;
+    }
+    .zoom-reset-btn:hover {
+      background: rgba(255, 255, 255, 1);
+      outline: var(--outline-hover);
+      outline-offset: 0;
+      color: var(--accent-strong);
+    }
+
+    .lsa-unit-placeholder {
+      position: absolute;
+      top: 16px;
+      z-index: 4;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(124, 58, 237, 0.25);
+      background: rgba(255, 255, 255, 0.92);
+      color: #3b1f6e;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      width: max-content;
+      max-width: calc(100% - 16px);
+      user-select: none;
+      touch-action: none;
+      cursor: grab;
+    }
+    .lsa-unit-placeholder-title {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      color: #5b21b6;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .lsa-audio-play-btn {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: var(--border-card-btn);
+      background: rgba(91, 33, 182, 0.12);
+      color: #5b21b6;
+      cursor: pointer;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      line-height: 1;
+      transition: background 0.15s, outline 0.15s;
+    }
+    .lsa-audio-play-btn:hover {
+      background: rgba(91, 33, 182, 0.24);
+      outline: 2px solid rgba(91, 33, 182, 0.6);
+      outline-offset: 0;
+    }
+    .lsa-audio-play-btn.playing {
+      width: 72px;
+      border-radius: 6px;
+      background: rgba(91, 33, 182, 0.1);
+      padding: 0 4px;
+      gap: 4px;
+      font-size: 9px;
+      cursor: pointer;
+      overflow: hidden;
+      position: relative;
+      outline: none;
+    }
+    .lsa-audio-play-btn.playing:hover {
+      background: rgba(91, 33, 182, 0.2);
+      outline: none;
+    }
+    .lsa-audio-progress-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      background: rgba(91, 33, 182, 0.22);
+      pointer-events: none;
+      transition: width 0.1s linear;
+    }
+    .lsa-audio-stop-label {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      white-space: nowrap;
+      color: #5b21b6;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+    .lsa-unit-placeholder-empty {
+      font-size: 0.74rem;
+      letter-spacing: 0.02em;
+      text-transform: none;
+      color: #44626c;
+      max-width: 240px;
+    }
+    .lsa-unit-placeholder-image {
+      display: block;
+      width: 100%;
+      max-height: 320px;
+      object-fit: contain;
+      border-radius: 10px;
+      border: 1px solid rgba(58, 76, 85, 0.22);
+      background: rgba(255, 255, 255, 0.94);
+      padding: 6px;
+    }
+
+    .lsa-unit-placeholder-media {
+      position: relative;
+      width: 260px;
+      max-width: min(520px, calc(100vw - 100px));
+    }
+
+    .lsa-resize-handle {
+      position: absolute;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      z-index: 5;
+    }
+
+    .lsa-resize-handle-e {
+      width: 12px;
+      height: 70%;
+      right: -6px;
+      top: 15%;
+      cursor: ew-resize;
+    }
+
+    .lsa-resize-handle-s {
+      width: 70%;
+      height: 12px;
+      left: 15%;
+      bottom: -6px;
+      cursor: ns-resize;
+    }
+
+    .lsa-resize-handle-se {
+      width: 18px;
+      height: 18px;
+      right: -9px;
+      bottom: -9px;
+      cursor: nwse-resize;
+    }
+
+    .lsa-unit-placeholder:active {
+      cursor: grabbing;
+    }
+
+    .assessment-scale-card {
+      position: absolute;
+      z-index: 4;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(124, 58, 237, 0.25);
+      background: rgba(255, 255, 255, 0.92);
+      color: #3b1f6e;
+      width: max-content;
+      max-width: 540px;
+      user-select: none;
+      touch-action: none;
+      cursor: grab;
+    }
+    .assessment-scale-inner {
+      position: relative;
+      width: 220px;
+      max-width: min(520px, calc(100vw - 100px));
+    }
+    .assessment-scale-body {
+      overflow-y: auto;
+      max-height: 100%;
+    }
+    .assessment-scale-card:active {
+      cursor: grabbing;
+    }
+    .assessment-scale-title {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      color: #5b21b6;
+    }
+    .assessment-scale-body {
+      font-size: 0.74rem;
+      color: #44307a;
+      letter-spacing: 0.01em;
+    }
+    .assessment-scale-row {
+      display: flex;
+      gap: 8px;
+      align-items: baseline;
+      margin-bottom: 4px;
+      border-radius: 6px;
+      padding: 2px 5px;
+    }
+    .assessment-scale-num {
+      font-weight: 700;
+      min-width: 14px;
+      color: #5b21b6;
+    }
+    .assessment-scale-text {
+      flex: 1;
+    }
+    .assessment-scale-empty .assessment-scale-text {
+      opacity: 0.35;
+    }
+    .assessment-scale-row.assess-r1 { background: rgba(22, 163, 74, 0.15); }
+    .assessment-scale-row.assess-r1 .assessment-scale-num { color: #14532d; }
+    .assessment-scale-row.assess-r2 { background: rgba(202, 138, 4, 0.15); }
+    .assessment-scale-row.assess-r2 .assessment-scale-num { color: #713f12; }
+    .assessment-scale-row.assess-r3 { background: rgba(234, 88, 12, 0.15); }
+    .assessment-scale-row.assess-r3 .assessment-scale-num { color: #7c2d12; }
+    .assessment-scale-row.assess-r4 { background: rgba(220, 38, 38, 0.15); }
+    .assessment-scale-row.assess-r4 .assessment-scale-num { color: #7f1d1d; }
+
+    .attendance-canvas,
+    .lsa-canvas {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      padding: 22px 22px 72px;
+    }
+
+    .chart-canvas.drag-over,
+    .roster-list.drag-over {
+      background: rgba(31, 122, 107, 0.08);
+    }
+
+    .attendance-canvas.drag-over,
+    .lsa-canvas.drag-over {
+      background: rgba(31, 122, 107, 0.08);
+    }
+
+    .chart-student {
+      position: absolute;
+      width: 148px;
+      padding: 12px 14px;
+      border-radius: 18px;
+      border: var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(249, 243, 232, 0.96));
+      box-shadow: 0 14px 28px rgba(69, 58, 39, 0.14);
+      cursor: grab;
+      user-select: none;
+      transition: left 0.4s ease, top 0.4s ease, transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .teacher-circle-card {
+      position: absolute;
+      width: 40px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #e8f4fd;
+      border: 2px dashed #5a9fd4;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #2c6b9e;
+      pointer-events: none;
+      user-select: none;
+      z-index: 1;
+    }
+
+    .chart-student.lsa-card {
+      width: 148px;
+    }
+
+    .chart-canvas[data-compact-circle="true"] .chart-student {
+      width: var(--circle-card-w, 148px);
+      padding: 6px 8px;
+      font-size: 0.84em;
+      border-radius: 14px;
+    }
+
+    /* Regular cards only: enforce min-height to stay proportional when width shrinks.   */
+    /* Attendance (~82 px natural) and LSA (~72 px natural) are already tall — no need. */
+    .chart-canvas[data-compact-circle="true"] .chart-student:not(.attendance-card):not(.lsa-card) {
+      min-height: var(--circle-card-h);
+    }
+
+    .chart-canvas[data-super-compact-circle="true"] .chart-student {
+      padding: 4px 5px;
+      font-size: 0.75em;
+    }
+
+    .chart-canvas[data-compact-circle="true"] .attendance-btn {
+      font-size: 0.64rem;
+      padding: 4px 0;
+    }
+
+    .chart-canvas[data-circle="true"] .attendance-card {
+      padding: 8px 10px;
+    }
+
+    .chart-student:hover {
+      transform: none;
+    }
+
+    .chart-student:active {
+      cursor: grabbing;
+    }
+
+    .chart-student.selected,
+    .roster-card.selected {
+      box-shadow: var(--ring), 0 14px 28px rgba(69, 58, 39, 0.14);
+    }
+
+    .chart-student[data-attendance="present"],
+    .roster-card[data-attendance="present"] {
+      outline: 2px solid #1f7a6b;
+      outline-offset: 0;
+    }
+
+    .chart-student[data-attendance="absent"],
+    .roster-card[data-attendance="absent"] {
+      outline: 2px solid #a53f2b;
+      outline-offset: 0;
+    }
+
+    .chart-student[data-attendance="late"],
+    .roster-card[data-attendance="late"] {
+      outline: 2px solid #c9a800;
+      outline-offset: 0;
+    }
+
+    .student-topline {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
+    .student-topline.single {
+      margin-bottom: 10px;
+    }
+
+    .attendance-card .student-topline.single {
+      min-height: 22px;
+    }
+
+    .student-edit-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      border: var(--border-card-btn);
+      background: rgba(255, 255, 255, 0.92);
+      color: #3a4c55;
+      font-size: 0.78rem;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      z-index: 3;
+      transition: background 0.16s ease, outline 0.16s ease, transform 0.16s ease;
+    }
+
+    .student-edit-btn:hover {
+      outline: var(--outline-hover);
+      outline-offset: 0;
+      background: #fff;
+      transform: translateY(-1px);
+    }
+
+    .student-edit-btn:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(31, 122, 107, 0.2);
+    }
+
+    .color-dot-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      border: var(--border-card-btn);
+      background: rgba(200, 205, 208, 0.5);
+      cursor: pointer;
+      padding: 0;
+      z-index: 3;
+      transition: background 0.14s ease, outline 0.14s ease;
+    }
+    .color-dot-btn:hover {
+      outline: var(--outline-hover);
+      outline-offset: 1px;
+    }
+    .color-dot-btn.color-dot-red    { background: #e05555; border-color: #c43c3c; }
+    .color-dot-btn.color-dot-orange { background: #e07830; border-color: #c45e1a; }
+    .color-dot-btn.color-dot-yellow { background: #d4b800; border-color: #aa9200; }
+    .color-dot-btn.color-dot-green  { background: #3a9e5f; border-color: #2a7d48; }
+    .color-dot-btn.color-dot-blue   { background: #3a7ec4; border-color: #2a60a0; }
+    .color-dot-btn.color-dot-purple { background: #8b4ec8; border-color: #6a35a8; }
+
+
+
+    .good-news-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      border: var(--border-card-btn);
+      background: rgba(235, 238, 240, 0.95);
+      color: #8a9399;
+      font-size: 0.78rem;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      z-index: 3;
+      transition: background 0.16s ease, outline 0.16s ease, color 0.16s ease;
+    }
+
+    .good-news-btn:hover {
+      background: rgba(228, 233, 236, 0.98);
+      color: #677178;
+    }
+
+    .good-news-btn.active {
+      background: #4f7fa8;
+      outline: none;
+      outline-offset: 0;
+      color: #ffffff;
+    }
+
+    .student-name-wrap {
+      display: inline-flex;
+      flex-direction: column;
+      min-width: 0;
+      line-height: 1.1;
+    }
+
+    .student-name-first {
+      font-size: 1rem;
+      line-height: 1.15;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .student-name-last-row {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      min-width: 0;
+      margin-top: 2px;
+    }
+
+    .student-name-last-row .student-name-last {
+      margin-top: 0;
+      flex: 1 1 0;
+      min-width: 0;
+    }
+
+    .attendance-card .attendance-row {
+      grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+    }
+
+    .attendance-card .good-news-btn {
+      position: static;
+      width: 22px;
+      min-width: unset;
+      height: auto;
+      border-radius: 8px;
+      padding: 3px 0;
+      font-size: 0.68rem;
+      align-self: center;
+    }
+
+    .student-name-last {
+      font-size: 0.78rem;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+      margin-top: 2px;
+    }
+
+    .student-topline.single .student-name-wrap {
+      width: 100%;
+    }
+
+    .student-roster-meta {
+      font-size: 0.74rem;
+      color: var(--muted);
+      margin-top: -2px;
+      margin-bottom: 7px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .student-grade {
+      font-size: 0.78rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .student-teacher {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .attendance-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .attendance-btn {
+      border: var(--border-card-btn);
+      background: rgba(255, 255, 255, 0.85);
+      color: rgba(58, 76, 85, 0.55);
+      border-radius: 10px;
+      padding: 6px 0;
+      font-size: 0.76rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.16s ease, outline 0.16s ease, color 0.16s ease;
+    }
+
+    .attendance-btn:hover {
+      outline: var(--outline-hover);
+      outline-offset: 0;
+      background: rgba(31, 122, 107, 0.08);
+    }
+
+    .attendance-btn.active {
+      color: #fff;
+    }
+
+    .attendance-btn[data-attendance="present"].active {
+      background: #1f7a6b;
+    }
+
+    .attendance-btn[data-attendance="absent"].active {
+      background: #a53f2b;
+    }
+
+    .attendance-btn[data-attendance="late"].active {
+      background: #b89600;
+    }
+
+    .lsa-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 3px;
+    }
+
+    .lsa-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+    }
+
+    .lsa-col-label {
+      font-size: 0.55rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: rgba(58, 76, 85, 0.55);
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    .lsa-btn {
+      border: var(--border-card-btn);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 6px;
+      padding: 3px 0;
+      width: 100%;
+      min-height: 22px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.16s ease, outline 0.16s ease, color 0.16s ease;
+    }
+
+    .lsa-btn:hover {
+      outline: 2px solid rgba(37, 99, 235, 0.45);
+      outline-offset: 0;
+      background: rgba(37, 99, 235, 0.07);
+    }
+
+    .lsa-btn[data-score="teacher"] {
+      background: rgba(30, 78, 168, 0.24);
+      outline: 2px solid rgba(30, 78, 168, 0.4);
+      outline-offset: 0;
+      color: #123a7a;
+    }
+
+    .lsa-btn[data-score="eval"] {
+      background: rgba(20, 88, 77, 0.24);
+      outline: 2px solid rgba(20, 88, 77, 0.4);
+      outline-offset: 0;
+      color: #0f3f36;
+    }
+
+    .assess-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 3px;
+    }
+
+    .assess-btn {
+      border: var(--border-card-btn);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 6px;
+      padding: 3px 0;
+      width: 100%;
+      min-height: 22px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.16s ease, outline 0.16s ease, color 0.16s ease;
+    }
+
+    .assess-btn:hover {
+      outline: 2px solid rgba(124, 58, 237, 0.4);
+      outline-offset: 0;
+      background: rgba(124, 58, 237, 0.07);
+    }
+
+    .assess-btn[data-rating="1"].active {
+      background: rgba(22, 163, 74, 0.22);
+      outline: 2px solid rgba(22, 163, 74, 0.5);
+      outline-offset: 0;
+      color: #14532d;
+    }
+
+    .assess-btn[data-rating="2"].active {
+      background: rgba(202, 138, 4, 0.2);
+      outline: 2px solid rgba(202, 138, 4, 0.5);
+      outline-offset: 0;
+      color: #713f12;
+    }
+
+    .assess-btn[data-rating="3"].active {
+      background: rgba(234, 88, 12, 0.2);
+      outline: 2px solid rgba(234, 88, 12, 0.5);
+      outline-offset: 0;
+      color: #7c2d12;
+    }
+
+    .assess-btn[data-rating="4"].active {
+      background: rgba(220, 38, 38, 0.2);
+      outline: 2px solid rgba(220, 38, 38, 0.5);
+      outline-offset: 0;
+      color: #7f1d1d;
+    }
+
+    /* Direction-aware colors: override data-rating rules when assess-r class is present */
+    .assess-btn.assess-r1 { background: rgba(22, 163, 74, 0.07); outline: 1px solid rgba(22, 163, 74, 0.35); outline-offset: 0; }
+    .assess-btn.assess-r2 { background: rgba(202, 138, 4, 0.07); outline: 1px solid rgba(202, 138, 4, 0.35); outline-offset: 0; }
+    .assess-btn.assess-r3 { background: rgba(234, 88, 12, 0.07); outline: 1px solid rgba(234, 88, 12, 0.35); outline-offset: 0; }
+    .assess-btn.assess-r4 { background: rgba(220, 38, 38, 0.07); outline: 1px solid rgba(220, 38, 38, 0.35); outline-offset: 0; }
+    .assess-btn.assess-r1.active { background: rgba(22, 163, 74, 0.42); outline: 2px solid rgba(22, 163, 74, 0.7); outline-offset: 0; color: #14532d; }
+    .assess-btn.assess-r2.active { background: rgba(202, 138, 4, 0.40); outline: 2px solid rgba(202, 138, 4, 0.7); outline-offset: 0; color: #713f12; }
+    .assess-btn.assess-r3.active { background: rgba(234, 88, 12, 0.40); outline: 2px solid rgba(234, 88, 12, 0.7); outline-offset: 0; color: #7c2d12; }
+    .assess-btn.assess-r4.active { background: rgba(220, 38, 38, 0.40); outline: 2px solid rgba(220, 38, 38, 0.7); outline-offset: 0; color: #7f1d1d; }
+
+    .assess-grid-cell {
+      text-align: center;
+      font-weight: 700;
+      font-size: 0.82rem;
+    }
+    .assess-grid-editable {
+      cursor: pointer;
+    }
+    .assess-grid-editable:hover {
+      filter: brightness(0.92);
+    }
+    .assessment-grid thead th:nth-child(n+4) {
+      vertical-align: bottom;
+      padding: 4px 4px 8px;
+      font-size: 0.72rem;
+    }
+    .assess-th-base {
+      display: inline-block;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      white-space: nowrap;
+      vertical-align: bottom;
+      font-weight: 700;
+    }
+    .assess-th-sub {
+      display: inline-block;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      white-space: nowrap;
+      vertical-align: bottom;
+      font-weight: 400;
+      opacity: 0.72;
+      font-size: 0.65rem;
+      margin-left: 3px;
+    }
+    .assess-grid-cell.assess-r1 { background: rgba(22, 163, 74, 0.18); color: #14532d; }
+    .assess-grid-cell.assess-r2 { background: rgba(202, 138, 4, 0.18); color: #713f12; }
+    .assess-grid-cell.assess-r3 { background: rgba(234, 88, 12, 0.18); color: #7c2d12; }
+    .assess-grid-cell.assess-r4 { background: rgba(220, 38, 38, 0.18); color: #7f1d1d; }
+
+    /* ── Assessment Library Modal ── */
+    .multi-grade-gear-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      color: var(--muted);
+      padding: 2px 4px;
+      border-radius: 6px;
+      line-height: 1;
+      flex-shrink: 0;
+      transition: color 0.15s ease, background 0.15s ease;
+    }
+    .multi-grade-gear-btn:hover {
+      color: var(--ink);
+      background: rgba(0,0,0,0.06);
+    }
+    .multi-grade-modal {
+      width: min(460px, calc(100vw - 40px));
+      max-height: calc(100vh - 80px);
+      overflow-y: auto;
+    }
+    .multi-grade-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .multi-grade-modal-header h3 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+    .multi-grade-directions {
+      font-size: 0.82rem;
+      color: var(--ink-light);
+      margin: 0 0 14px;
+      line-height: 1.45;
+    }
+    .multi-grade-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .multi-grade-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: var(--border);
+      background: #fff;
+    }
+    .multi-grade-row input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .multi-grade-row label {
+      cursor: pointer;
+      font-size: 0.9rem;
+      flex: 1;
+    }
+    .multi-grade-empty {
+      font-size: 0.85rem;
+      color: var(--ink-light);
+      padding: 10px 0;
+    }
+
+    .assess-lib-modal {
+      width: min(1100px, calc(100vw - 40px)) !important;
+      height: min(560px, calc(100vh - 80px));
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .assess-lib-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      flex-shrink: 0;
+    }
+    .assess-lib-header h3 { margin: 0; font-size: 1.35rem; }
+    .assess-lib-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-shrink: 0;
+    }
+    .assess-lib-grade-select {
+      padding: 5px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      font-size: 0.9rem;
+      background: #fff;
+    }
+    .assess-lib-body {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .assess-lib-placeholder {
+      color: var(--ink-light);
+      font-size: 0.9rem;
+      padding: 20px 0;
+      text-align: center;
+    }
+    .assess-lib-item {
+      border: var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 12px;
+      background: #fafbfc;
+    }
+    .assess-lib-item-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .assess-lib-num {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--ink-light);
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .assess-lib-label-sep {
+      color: var(--ink-light);
+      flex-shrink: 0;
+    }
+    .assess-lib-name-input {
+      flex: 1;
+      padding: 5px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      font-size: 0.9rem;
+      font-weight: 600;
+      background: #fff;
+    }
+    .assess-lib-scale-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .assess-lib-scale-item label {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+      color: var(--ink-light);
+    }
+    .assess-lib-scale-item.assess-r1 label { color: #14532d; }
+    .assess-lib-scale-item.assess-r2 label { color: #713f12; }
+    .assess-lib-scale-item.assess-r3 label { color: #7c2d12; }
+    .assess-lib-scale-item.assess-r4 label { color: #7f1d1d; }
+    .assess-lib-scale-item.assess-r1 textarea { border-color: rgba(22, 163, 74, 0.35); }
+    .assess-lib-scale-item.assess-r2 textarea { border-color: rgba(202, 138, 4, 0.35); }
+    .assess-lib-scale-item.assess-r3 textarea { border-color: rgba(234, 88, 12, 0.35); }
+    .assess-lib-scale-item.assess-r4 textarea { border-color: rgba(220, 38, 38, 0.35); }
+    .assess-lib-scale-item textarea {
+      width: 100%;
+      box-sizing: border-box;
+      resize: vertical;
+      min-height: 72px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      font-size: 0.82rem;
+      font-family: inherit;
+      background: #fff;
+      line-height: 1.4;
+    }
+    .assess-lib-scale-item textarea:focus {
+      outline: none;
+      border-color: rgba(124, 58, 237, 0.5);
+    }
+    .assess-lib-save-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 10px;
+    }
+
+    .roster-panel {
+      z-index: 9;
+      padding: 24px 20px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 11px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.82);
+      color: var(--ink);
+    }
+
+    .chart-library {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.8);
+      border: var(--border);
+    }
+
+    .chart-library.collapsed {
+      border-radius: var(--radius-btn);
+      padding: 14px 14px 14px 17px;
+    }
+
+    .chart-library-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .chart-library-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      width: 100%;
+      background: transparent;
+      border: none;
+      padding: 0;
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .chart-library-title strong {
+      font-size: 0.98rem;
+      color: var(--ink);
+    }
+
+    .chart-library-title span {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .chart-library-chevron {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      transition: transform 0.16s ease;
+    }
+
+    .chart-library-title[aria-expanded="true"] .chart-library-chevron {
+      transform: rotate(90deg);
+    }
+
+    .chart-library-body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    #seating-chart-library-body {
+      overflow-y: auto;
+      overflow-x: hidden;
+      max-height: 220px;
+      padding: 2px;
+      margin: -2px;
+    }
+
+    .chart-list {
+      display: grid;
+      gap: 8px;
+      padding: 2px;
+      margin: -2px;
+    }
+
+    .chart-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: start;
+      padding: 10px 12px;
+      border-radius: var(--radius-btn);
+      background: rgba(216, 208, 192, 0.38);
+      border: var(--border);
+    }
+
+    .chart-row.active {
+      outline: var(--outline-active);
+      outline-offset: 0;
+      box-shadow: inset 0 0 0 1px rgba(31, 122, 107, 0.16);
+      background: rgba(190, 180, 162, 0.55);
+    }
+
+    .chart-row-main {
+      background: transparent;
+      border: none;
+      padding: 0;
+      text-align: left;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .chart-row-name {
+      display: block;
+      font-weight: 700;
+      font-size: 0.92rem;
+      line-height: 1.2;
+    }
+
+    .chart-name-edit {
+      display: block;
+      font-weight: 700;
+      font-size: 0.92rem;
+      line-height: 1.2;
+      padding: 4px 6px;
+      border: 2px solid var(--accent);
+      border-radius: 4px;
+      font-family: inherit;
+      color: var(--ink);
+      background: var(--cream);
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .chart-name-edit:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(187, 162, 131, 0.2);
+    }
+
+    .chart-row-meta {
+      display: block;
+      margin-top: 3px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .chart-row-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .chart-mini-btn {
+      width: 30px;
+      height: 30px;
+      min-width: 30px;
+      min-height: 30px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      line-height: 1;
+      background: rgba(255, 255, 255, 0.98);
+      color: #d8a54a;
+      cursor: pointer;
+      transition: background 0.2s ease, outline 0.2s ease;
+    }
+
+    .chart-mini-btn:hover {
+      background: rgba(255, 255, 255, 1);
+      outline: 2px solid rgba(58, 76, 85, 0.4);
+      outline-offset: 0;
+    }
+
+    .chart-mini-btn:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .chart-mini-btn:active {
+      transform: scale(0.98);
+    }
+
+    .chart-mini-btn svg {
+      width: 16px;
+      height: 16px;
+      display: block;
+      fill: currentColor;
+    }
+
+    .chart-mini-btn.danger {
+      background: rgba(251, 237, 234, 0.96);
+      color: #8c2d1f;
+    }
+
+    .chart-mini-btn.danger:hover {
+      background: rgba(251, 237, 234, 1);
+      outline: 2px solid rgba(139, 45, 31, 0.4);
+      outline-offset: 0;
+    }
+
+    .chart-library-empty {
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.75);
+      border: 1px dashed rgba(58, 76, 85, 0.16);
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .class-list {
+      display: grid;
+      gap: 8px;
+      max-height: 320px;
+      overflow-y: auto;
+      padding: 2px;
+      margin: -2px;
+    }
+
+    .class-pill {
+      width: 100%;
+      text-align: left;
+      border-radius: var(--radius-btn);
+      padding: 10px 12px;
+      background: rgba(216, 208, 192, 0.38);
+      color: var(--ink);
+      cursor: pointer;
+      transition: outline 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .class-pill:hover {
+      outline: var(--outline-hover);
+      outline-offset: 0;
+      background: rgba(216, 208, 192, 0.55);
+    }
+
+    .class-pill.active {
+      outline: var(--outline-active);
+      outline-offset: 0;
+      background: rgba(190, 180, 162, 0.55);
+      box-shadow: inset 0 0 0 1px rgba(31, 122, 107, 0.15);
+    }
+
+    .roster-list {
+      flex: 1;
+      min-height: 180px;
+      padding: 4px;
+      border-radius: 18px;
+      overflow: auto;
+      display: grid;
+      align-content: start;
+      gap: 12px;
+      transition: background 0.18s ease;
+    }
+
+    .roster-card {
+      position: relative;
+      padding: 14px 14px 12px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.85);
+      border: var(--border);
+      box-shadow: 0 10px 18px rgba(74, 66, 48, 0.08);
+      cursor: grab;
+      transition: transform 0.18s ease;
+    }
+
+    .roster-card:hover {
+      transform: none;
+    }
+
+    .roster-card.inactive-student {
+      opacity: 0.55;
+      border-style: dashed;
+    }
+
+    .inactive-badge {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #b45309;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(180, 83, 9, 0.25);
+      border-radius: 5px;
+      padding: 1px 5px;
+      margin-left: 5px;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    .roster-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    .ghost-btn {
+      text-align: center;
+      padding: 10px 14px;
+      font-size: 0.9rem;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(25, 33, 38, 0.38);
+      z-index: 10000;
+      padding: 20px;
+      pointer-events: auto;
+    }
+
+    .modal-overlay.hidden {
+      display: none;
+    }
+
+    .modal {
+      position: relative;
+      width: min(460px, 100%);
+      background: var(--surface-strong);
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.68);
+      box-shadow: 0 26px 45px rgba(22, 31, 35, 0.22);
+      padding: 26px;
+      z-index: 10001;
+      pointer-events: auto;
+    }
+
+    .modal h3 {
+      font-size: 1.35rem;
+      margin-bottom: 18px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.88rem;
+      color: #485962;
+    }
+
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink);
+      outline: none;
+    }
+
+    .form-group textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .btn-primary {
+      padding: 11px 16px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      color: #fff;
+    }
+
+    .btn-cancel {
+      padding: 11px 16px;
+      background: rgba(232, 226, 216, 0.72);
+      color: var(--ink);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    /* ── Custom tooltip ── */
+    .app-tooltip {
+      position: fixed;
+      z-index: 99999;
+      background: rgba(28, 38, 46, 0.93);
+      color: #fff;
+      font-size: 0.78rem;
+      padding: 5px 9px;
+      border-radius: 7px;
+      pointer-events: none;
+      white-space: pre-line;
+      max-width: 280px;
+      line-height: 1.45;
+      opacity: 0;
+      transition: opacity 0.12s ease 0.2s;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
+    }
+    .app-tooltip.visible {
+      opacity: 1;
+    }
+
+    /* ── Export Selected Students modal ── */
+    .export-select-modal {
+      width: min(720px, 95vw);
+      max-height: min(600px, 90vh);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .export-select-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .export-select-header h3 {
+      margin: 0;
+    }
+
+    .export-select-body {
+      display: flex;
+      gap: 16px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .export-select-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .export-select-panel h4,
+    .export-chosen-panel h4 {
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--ink-light, #6b7a84);
+      margin: 0 0 6px 0;
+    }
+
+    .export-select-search {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.88);
+      color: var(--ink);
+      font-size: 0.88rem;
+      margin-bottom: 8px;
+      box-sizing: border-box;
+      outline: none;
+    }
+
+    .export-select-list {
+      flex: 1;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .export-select-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      transition: background 0.1s;
+    }
+
+    .export-select-item:last-child {
+      border-bottom: none;
+    }
+
+    .export-select-item:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .export-select-item.already-selected {
+      background: rgba(80, 140, 240, 0.10);
+    }
+
+    .export-select-item.already-selected .export-select-name {
+      color: var(--accent, #5a8fd4);
+    }
+
+    .export-select-name {
+      flex: 1;
+      font-size: 0.88rem;
+    }
+
+    .export-select-name.inactive-student {
+      opacity: 0.55;
+      font-style: italic;
+    }
+
+    .export-select-meta {
+      font-size: 0.76rem;
+      color: var(--ink-light, #6b7a84);
+    }
+
+    .export-select-check {
+      font-size: 0.82rem;
+      color: var(--accent, #5a8fd4);
+      font-weight: bold;
+    }
+
+    /* Chosen / right panel */
+    .export-chosen-panel {
+      flex: 0 0 220px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .export-chosen-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 10px;
+    }
+
+    .export-chosen-actions .action-btn {
+      margin: 0;
+    }
+
+    .export-chosen-actions .action-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .export-chosen-count {
+      font-size: 0.78rem;
+      color: var(--ink-light, #6b7a84);
+      text-align: center;
+    }
+
+    .export-chosen-list {
+      flex: 1;
+      overflow-y: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .export-chosen-item {
+      display: flex;
+      align-items: center;
+      padding: 7px 10px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      gap: 6px;
+    }
+
+    .export-chosen-item:last-child {
+      border-bottom: none;
+    }
+
+    .export-chosen-name {
+      flex: 1;
+      font-size: 0.85rem;
+    }
+
+    .export-chosen-remove {
+      background: none;
+      border: none;
+      color: var(--ink-light, #6b7a84);
+      cursor: pointer;
+      font-size: 0.85rem;
+      padding: 2px 5px;
+      border-radius: 5px;
+      line-height: 1;
+    }
+
+    .export-chosen-remove:hover {
+      background: rgba(220, 60, 60, 0.12);
+      color: #c04040;
+    }
+
+    @media (max-width: 1180px) {
+      body {
+        overflow: auto;
+      }
+
+      .app-shell {
+        height: auto;
+        min-height: 100vh;
+        grid-template-columns: 1fr;
+        overflow: visible;
+      }
+
+      .main-panel {
+        overflow-y: auto;
+      }
+
+      .chart-shell {
+        min-height: 520px;
+        height: auto;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .app-shell {
+        padding: 12px;
+        gap: 12px;
+      }
+
+      .summary-row {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .summary-row .attendance-summary:last-child {
+        margin-left: 0;
+        justify-content: flex-start;
+      }
+
+      .roster-filters {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar,
+      .main-panel,
+      .roster-panel {
+        border-radius: 20px;
+      }
+
+      .status-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .attendance-summary {
+        border-radius: 16px;
+      }
+
+      .workspace-top {
+        flex-direction: column;
+      }
+
+      .top-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+
+      .chart-student {
+        width: 138px;
+      }
+    }
+    /* --- Lesson Library Modal --- */
+    .lesson-library-modal {
+      width: min(760px, calc(100vw - 40px));
+      max-height: calc(100vh - 60px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .lesson-lib-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      flex-shrink: 0;
+    }
+
+    .lesson-lib-header h3 {
+      margin: 0;
+      font-size: 1.35rem;
+    }
+
+    .lesson-lib-close-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 8px;
+      color: var(--ink-light);
+      font-size: 18px;
+      line-height: 1;
+      border-radius: 8px;
+    }
+
+    .lesson-lib-close-btn:hover {
+      background: rgba(0,0,0,0.07);
+    }
+
+    .lesson-lib-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--line);
+      flex-shrink: 0;
+      margin-bottom: 16px;
+    }
+
+    .lesson-lib-tab {
+      padding: 8px 18px;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: var(--ink-light);
+      font-weight: 500;
+    }
+
+    .lesson-lib-tab:hover {
+      color: var(--ink);
+    }
+
+    .lesson-lib-tab.active {
+      border-bottom-color: var(--accent);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .lesson-lib-panel {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .lesson-lib-panel.active {
+      display: flex;
+    }
+
+    .lesson-lib-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      padding: 3px 3px 5px;
+    }
+
+    .lesson-lib-toolbar label {
+      font-size: 0.88rem;
+      color: var(--ink-light);
+      white-space: nowrap;
+    }
+
+    .lesson-lib-grade-select {
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink);
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .lesson-lib-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(116px, 1fr));
+      gap: 10px;
+      overflow-y: auto;
+      flex: 1;
+      min-height: 0;
+      align-content: start;
+    }
+
+    .lesson-lib-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 8px 8px;
+      border-radius: 12px;
+      border: var(--border);
+      background: rgba(255, 255, 255, 0.7);
+      position: relative;
+      cursor: default;
+    }
+
+    .lesson-lib-thumb {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 8px;
+      display: block;
+    }
+
+    .lesson-lib-filename {
+      font-size: 0.72rem;
+      color: var(--ink);
+      text-align: center;
+      word-break: break-word;
+      line-height: 1.3;
+      max-width: 100px;
+    }
+
+    .lesson-lib-delete-btn {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: rgba(195, 55, 55, 0.82);
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      padding: 0;
+      opacity: 1;
+      transition: background 0.15s;
+    }
+
+    .lesson-lib-delete-btn:hover {
+      background: rgba(195, 55, 55, 1);
+    }
+
+    .lesson-lib-card.pick-mode {
+      cursor: pointer;
+      outline: 1px solid rgba(31, 122, 107, 0.3);
+      outline-offset: 0;
+    }
+
+    .lesson-lib-card.pick-mode:hover {
+      outline: 2px solid var(--accent);
+      outline-offset: 0;
+      background: rgba(242, 251, 248, 0.95);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(31, 122, 107, 0.18);
+      transition: transform 0.16s ease, box-shadow 0.16s ease, outline 0.16s ease;
+    }
+
+    /* audio pills — upper left of card */
+    .lesson-lib-audio-pills {
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      align-items: flex-start;
+    }
+
+    .lesson-lib-audio-pill {
+      height: 20px;
+      padding: 0 7px;
+      border-radius: 10px;
+      border: 1px solid rgba(109, 40, 217, 0.5);
+      background: #ede9fe;
+      color: #5b21b6;
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      line-height: 1;
+      max-width: 90px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: background 0.12s, color 0.12s;
+    }
+
+    .lesson-lib-audio-pill:hover {
+      background: #ddd6fe;
+      color: #3b0764;
+    }
+
+    .lesson-lib-audio-pill.has-audio {
+      border-color: rgba(109, 40, 217, 0.6);
+      background: #ddd6fe;
+      color: #4c1d95;
+    }
+
+    .lesson-lib-remove-audio-pill {
+      height: 20px;
+      padding: 0 7px;
+      border-radius: 10px;
+      border: 1px solid rgba(185, 50, 50, 0.5);
+      background: #fee2e2;
+      color: #b91c1c;
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      line-height: 1;
+      transition: background 0.12s, color 0.12s;
+    }
+
+    .lesson-lib-remove-audio-pill:hover {
+      background: #fecaca;
+      color: #7f1d1d;
+    }
+
+    .lesson-lib-empty {
+      font-size: 0.88rem;
+      color: var(--ink-light);
+      padding: 20px 0;
+      text-align: center;
+    }
+
+    .lesson-lib-assign-wrap {
+      overflow-y: auto;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .lesson-lib-assign-placeholder {
+      font-size: 0.88rem;
+      color: var(--ink-light);
+      padding: 20px 0;
+      text-align: center;
+    }
+
+    .lesson-lib-assign-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .lesson-lib-assign-table th {
+      font-size: 0.8rem;
+      color: var(--ink-light);
+      font-weight: 600;
+      padding: 6px 10px 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      position: sticky;
+      top: 0;
+      background: var(--surface-strong);
+    }
+
+    .lesson-lib-assign-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+      vertical-align: middle;
+    }
+
+    .lesson-lib-assign-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .lesson-lib-unit-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+
+    .lesson-lib-assign-select {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink);
+      font-size: 0.83rem;
+      cursor: pointer;
+    }
+
+    .lesson-lib-assign-preview {
+      width: 38px;
+      height: 38px;
+      object-fit: cover;
+      border-radius: 6px;
+      display: block;
+    }
+
+    /* --- CSV Import Modal --- */
+    .csv-import-modal {
+      width: min(600px, calc(100vw - 40px));
+      max-height: calc(100vh - 60px);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .csv-import-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      flex-shrink: 0;
+    }
+
+    .csv-import-header h3 { margin: 0; font-size: 1.35rem; }
+
+    .csv-step-indicator {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-shrink: 0;
+    }
+
+    .csv-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .csv-step-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--line);
+      color: var(--ink-light);
+      font-size: 0.78rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .csv-step.active .csv-step-dot { background: var(--accent); color: #fff; }
+    .csv-step.done .csv-step-dot { background: #4caf7e; color: #fff; }
+
+    .csv-step-label {
+      font-size: 0.72rem;
+      color: var(--ink-light);
+      white-space: nowrap;
+    }
+
+    .csv-step.active .csv-step-label { color: var(--accent); font-weight: 600; }
+
+    .csv-step-line {
+      flex: 1;
+      height: 1px;
+      background: var(--line);
+      margin: 0 8px;
+      margin-bottom: 12px;
+    }
+
+    .csv-step-panel {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow: hidden;
+    }
+
+    .csv-step-panel.hidden { display: none; }
+
+    .csv-drop-zone {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 2px dashed var(--line);
+      border-radius: 16px;
+      padding: 32px 24px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      text-align: center;
+    }
+
+    .csv-drop-zone:hover, .csv-drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(31, 122, 107, 0.04);
+    }
+
+    .csv-drop-icon { width: 32px; height: 32px; fill: var(--ink-light); }
+    .csv-drop-text { font-size: 0.9rem; color: var(--ink-light); }
+    .csv-drop-link { color: var(--accent); text-decoration: underline; }
+    .csv-file-name { font-size: 0.83rem; color: var(--accent); font-weight: 600; min-height: 1.2em; }
+    .csv-file-input-hidden { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+    .csv-step-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+      padding-top: 4px;
+    }
+
+    .csv-map-intro { font-size: 0.88rem; color: var(--ink-light); margin: 0; flex-shrink: 0; }
+
+    .csv-map-table-wrap { overflow-y: auto; flex: 1; min-height: 0; }
+
+    .csv-map-table, .csv-preview-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .csv-map-table th, .csv-preview-table th {
+      font-size: 0.8rem;
+      color: var(--ink-light);
+      font-weight: 600;
+      padding: 6px 10px 8px;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+      position: sticky;
+      top: 0;
+      background: var(--surface-strong);
+    }
+
+    .csv-map-table td, .csv-preview-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+      vertical-align: middle;
+    }
+
+    .csv-map-table tr:last-child td, .csv-preview-table tr:last-child td { border-bottom: none; }
+
+    .csv-map-field-label { font-size: 0.85rem; font-weight: 600; color: var(--ink); }
+    .csv-map-required { color: #c34040; }
+
+    .csv-map-select, .csv-preview-table td {
+      font-size: 0.83rem;
+    }
+
+    .csv-map-select {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--ink);
+    }
+
+    .csv-map-preview-cell {
+      font-size: 0.78rem;
+      color: var(--ink-light);
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .csv-preview-count { font-size: 0.9rem; color: var(--ink-light); margin: 0; flex-shrink: 0; }
+    .csv-preview-table-wrap { overflow: auto; flex: 1; min-height: 0; }
+    .csv-preview-table td { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .csv-import-result {
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 0.88rem;
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+
+    .csv-import-result.success { background: rgba(76, 175, 126, 0.12); color: #2e7d52; }
+    .csv-import-result.error { background: rgba(195, 64, 64, 0.1); color: #a33232; }
+
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="panel sidebar">
+      <div class="brand-block">
+        <div class="eyebrow">Elementary Music Room</div>
+        <div class="view-selector">
+          <button id="view-seating-btn" class="view-pill active" data-view="seating">
+            <strong>Seating Chart View</strong>
+          </button>
+          <button id="view-gradebook-btn" class="view-pill" data-view="gradebook">
+            <strong>Gradebook View</strong>
+          </button>
+        </div>
+        <div class="academic-year-row">
+          <span class="academic-year-label">School Year</span>
+          <span id="academic-year-display" class="academic-year-display" title="School year starts Aug 1 and ends July 31"></span>
+        </div>
+      </div>
+
+      <section class="sidebar-section">
+        <h2>Selection</h2>
+        <div id="selection-card" class="detail-card">
+          <div class="detail-name">No student selected</div>
+          <div class="detail-copy">Click a roster card or a placed seat to inspect it here.</div>
+        </div>
+      </section>
+
+      <section class="sidebar-section">
+        <h2>Actions</h2>
+        <div class="button-stack">
+          <button id="chart-tools-btn" class="action-btn" type="button">
+            <strong>Chart Tools</strong>
+          </button>
+          <div id="chart-tools-submenu" class="chart-tools-submenu">
+            <button id="undo-clear-chart-btn" class="action-btn sub-action-btn hidden" type="button">
+              <strong>Undo Clear Chart</strong>
+            </button>
+            <button id="arrange-rows-btn" class="action-btn sub-action-btn chart-tool-btn" type="button">
+              <strong>Arrange Rows</strong>
+            </button>
+            <button id="neaten-rows-btn" class="action-btn sub-action-btn chart-tool-btn" type="button">
+              <strong>Neaten Rows</strong>
+            </button>
+            <button id="arrange-circle-btn" class="action-btn sub-action-btn chart-tool-btn" type="button">
+              <strong>Arrange Circle</strong>
+            </button>
+            <button id="neaten-circle-btn" class="action-btn sub-action-btn chart-tool-btn" type="button">
+              <strong>Neaten Circle</strong>
+            </button>
+            <button id="clear-chart-btn" class="action-btn sub-action-btn chart-tool-btn" type="button">
+              <strong>Clear Chart</strong>
+            </button>
+            <button id="clear-color-dots-btn" class="action-btn sub-action-btn chart-tool-btn" type="button">
+              <strong>Clear Dot Colors</strong>
+            </button>
+          </div>
+          <button id="manage-students-btn" class="action-btn" type="button">
+            <strong>Manage Students</strong>
+          </button>
+          <div id="manage-students-submenu" class="chart-tools-submenu">
+            <button id="add-student-btn" class="action-btn sub-action-btn chart-tool-btn" type="button">
+              <strong>Add Student</strong>
+            </button>
+            <button id="toggle-edit-mode-btn" class="action-btn sub-action-btn chart-tool-btn" type="button">
+              <strong>Edit Students</strong>
+            </button>
+            <button id="show-inactive-btn" class="action-btn sub-action-btn chart-tool-btn" type="button">
+              <strong>Show Inactive Students</strong>
+            </button>
+            <button id="backup-students-btn" class="action-btn sub-action-btn chart-tool-btn" type="button">
+              <strong>Backup Students to CSV</strong>
+            </button>
+            <button id="export-selected-students-btn" class="action-btn sub-action-btn chart-tool-btn" type="button">
+              <strong>Export Selected Students to CSV</strong>
+            </button>
+            <button id="import-students-csv-btn" class="action-btn sub-action-btn chart-tool-btn" type="button">
+              <strong>Import from CSV</strong>
+            </button>
+          </div>
+          <h2>Chart Modes</h2>
+          <button id="toggle-attendance-btn" class="action-btn" type="button">
+            <strong>Attendance Mode</strong>
+          </button>
+          <div id="attendance-submenu" class="chart-tools-submenu">
+            <button id="mark-all-present-btn" class="action-btn sub-action-btn chart-tool-btn" type="button">
+              <strong>Mark All Present</strong>
+            </button>
+            <button id="clear-good-news-btn" class="action-btn sub-action-btn chart-tool-btn" type="button">
+              <strong>Clear Good News Checks</strong>
+            </button>
+          </div>
+          <button id="toggle-lsa-btn" class="action-btn" type="button">
+            <strong>Learning Sequence Mode</strong>
+          </button>
+          <div id="lsa-submenu" class="chart-tools-submenu">
+            <button id="show-units-btn" class="action-btn sub-action-btn chart-tool-btn" type="button">
+              <strong>Show Units</strong>
+            </button>
+            <button id="lesson-library-btn" class="action-btn sub-action-btn chart-tool-btn" type="button">
+              <strong>Lesson Library</strong>
+            </button>
+          </div>
+          <button id="toggle-assessment-btn" class="action-btn" type="button">
+            <strong>Assessment Mode</strong>
+          </button>
+          <div id="assessment-submenu" class="chart-tools-submenu">
+            <button id="show-assessments-btn" class="action-btn sub-action-btn chart-tool-btn" type="button"><strong>Show Assessments</strong></button>
+            <button id="assessment-library-btn" class="action-btn sub-action-btn chart-tool-btn" type="button"><strong>Assessment Library</strong></button>
+            <button id="rating-direction-btn" class="action-btn sub-action-btn chart-tool-btn" type="button"><strong id="rating-direction-label">1 is Best</strong></button>
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <main class="panel main-panel">
+      <div class="summary-row">
+        <section class="attendance-summary" aria-label="Attendance Summary">
+          <span class="attendance-chip">Present <strong id="present-count">0</strong></span>
+          <span class="attendance-chip">Absent <strong id="absent-count">0</strong></span>
+          <span class="attendance-chip">Late <strong id="late-count">0</strong></span>
+          <span class="attendance-chip">Unmarked <strong id="unmarked-count">0</strong></span>
+        </section>
+
+        <div id="current-view-label" class="eyebrow">Seating Chart View</div>
+
+        <section class="attendance-summary" aria-label="Roster Summary">
+          <span id="chart-teacher-label" class="chart-teacher-label"></span>
+          <span class="attendance-chip">Students <strong id="student-count">0</strong></span>
+          <span class="attendance-chip">Placed <strong id="seated-count">0</strong></span>
+          <span class="attendance-chip">Roster <strong id="roster-count">0</strong></span>
+        </section>
+
+        <div class="app-settings">
+          <button id="settings-gear-btn" class="settings-gear-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Open settings">&#9881;</button>
+          <div id="settings-dropdown" class="settings-dropdown hidden" role="menu" aria-label="Reset options">
+            <div class="settings-font-row">
+              <label for="font-switcher">Font</label>
+              <select id="font-switcher" class="settings-font-select">
+                <option value="Georgia, 'Times New Roman', serif">Georgia (serif)</option>
+                <option value="'Palatino Linotype', Palatino, serif">Palatino (serif)</option>
+                <option value="system-ui, -apple-system, sans-serif">System (sans-serif)</option>
+                <option value="'Gill Sans', Optima, sans-serif">Gill Sans (sans-serif)</option>
+                <option value="'Courier New', Courier, monospace">Courier (monospace)</option>
+                <option value="'lora', serif">Lora (serif)</option>
+                <option value="'open sans', 'Times New Roman', sans-serif">Open Sans (sans-serif)</option>
+                <option value="'roboto', 'Times New Roman', sans-serif">Roboto (sans-serif)</option>
+              </select>
+            </div>
+            <button id="reset-student-data-btn" class="settings-action-btn" type="button" role="menuitem">Reset Student Data Only</button>
+            <button id="reset-factory-btn" class="settings-action-btn danger" type="button" role="menuitem">Full Factory Reset</button>
+            <div class="settings-divider"></div>
+            <button id="check-for-updates-btn" class="settings-action-btn" type="button" role="menuitem">Check for Updates</button>
+            <div id="update-status-line" class="update-status-line hidden"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="workspace-grid">
+        <div id="seating-view" class="view-container active">
+          <section class="chart-shell">
+            <div class="chart-stage"></div>
+            <div id="chart-canvas" class="chart-canvas"></div>
+            <button id="zoom-reset-btn" class="zoom-reset-btn hidden" type="button" title="Reset zoom &amp; pan">100%</button>
+          </section>
+        </div>
+
+        <div id="gradebook-view" class="view-container hidden">
+          <section class="attendance-grid-shell">
+            <div id="gradebook-class-subtitle" class="gradebook-subtitle">Class: All Classes</div>
+            <div class="gradebook-tabs">
+              <button id="gradebook-tab-attendance" class="gradebook-tab active" type="button">Attendance</button>
+              <button id="gradebook-tab-lsa" class="gradebook-tab" type="button">LSA Record</button>
+              <button id="gradebook-tab-assessment" class="gradebook-tab" type="button">Tonal Assessments</button>
+              <button id="gradebook-tab-rhythm" class="gradebook-tab" type="button">Rhythm Assessments</button>
+              <button id="gradebook-tab-movement" class="gradebook-tab" type="button">Movement Assessments</button>
+              <button id="gradebook-tab-instrument" class="gradebook-tab" type="button">Instrument Assessments</button>
+              <button id="gradebook-tab-recorders" class="gradebook-tab hidden" type="button">Recorders</button>
+              <button id="gradebook-tab-imma" class="gradebook-tab" type="button">IMMA Scores</button>
+            </div>
+            <div id="gradebook-attendance-panel" class="gradebook-tab-panel active">
+              <div id="attendance-canvas" class="attendance-grid-wrap"></div>
+            </div>
+            <div id="gradebook-lsa-panel" class="gradebook-tab-panel">
+              <div id="lsa-grid-canvas" class="attendance-grid-wrap"></div>
+            </div>
+            <div id="gradebook-assessment-panel" class="gradebook-tab-panel">
+              <div id="assessment-grid-canvas" class="attendance-grid-wrap"></div>
+            </div>
+            <div id="gradebook-rhythm-panel" class="gradebook-tab-panel">
+              <div id="rhythm-grid-canvas" class="attendance-grid-wrap"></div>
+            </div>
+            <div id="gradebook-movement-panel" class="gradebook-tab-panel">
+              <div id="movement-grid-canvas" class="attendance-grid-wrap"></div>
+            </div>
+            <div id="gradebook-instrument-panel" class="gradebook-tab-panel">
+              <div id="instrument-grid-canvas" class="attendance-grid-wrap"></div>
+            </div>
+            <div id="gradebook-recorders-panel" class="gradebook-tab-panel">
+              <div id="recorders-grid-canvas" class="attendance-grid-wrap"></div>
+            </div>
+            <div id="gradebook-imma-panel" class="gradebook-tab-panel">
+              <div id="imma-grid-canvas" class="attendance-grid-wrap"></div>
+            </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="panel roster-panel">
+      <section id="class-library" class="chart-library hidden">
+        <div class="chart-library-header">
+          <button id="toggle-classes-list-btn" class="chart-library-title" type="button" aria-expanded="true" style="flex:1; width:auto;">
+            <div>
+              <strong>Classes</strong>
+            </div>
+            <span class="chart-library-chevron">&#9654;</span>
+          </button>
+          <button id="multi-grade-gear-btn" class="multi-grade-gear-btn" type="button" title="Configure multi-grade classes" aria-label="Configure multi-grade classes">&#9881;</button>
+        </div>
+        <div id="class-library-body" class="chart-library-body">
+          <div id="class-list" class="class-list"></div>
+        </div>
+      </section>
+
+      <section id="seating-chart-library" class="chart-library hidden">
+        <div class="chart-library-header">
+          <button id="toggle-seating-charts-list-btn" class="chart-library-title" type="button" aria-expanded="true">
+            <div>
+              <strong>Seating Charts</strong>
+            </div>
+            <span class="chart-library-chevron">&#9654;</span>
+          </button>
+        </div>
+        <button id="add-seating-chart-btn" class="ghost-btn hidden" type="button" style="width: 100%;">New Chart</button>
+        <div id="seating-chart-library-body" class="chart-library-body">
+          <div id="seating-chart-list" class="chart-list"></div>
+        </div>
+      </section>
+
+      <section id="units-library" class="chart-library hidden">
+        <div class="chart-library-header">
+          <div class="chart-library-title" style="cursor: default;">
+            <div>
+              <strong>Units</strong>
+              <span>Placeholder unit list for Learning Sequence tracking.</span>
+            </div>
+          </div>
+        </div>
+        <div class="chart-library-body">
+          <div id="units-list" class="class-list"></div>
+        </div>
+      </section>
+
+      <section id="assessments-library" class="chart-library hidden">
+        <div class="chart-library-header">
+          <div class="chart-library-title" style="cursor: default;">
+            <div>
+              <strong>Assessments</strong>
+            </div>
+          </div>
+        </div>
+        <div class="chart-library-body">
+          <div id="assessments-list" class="class-list"></div>
+        </div>
+      </section>
+
+      <div>
+        <div class="eyebrow">Student Cards</div>
+        <h2>Roster Bank</h2>
+      </div>
+      <input id="student-search" class="search-input" type="text" placeholder="Search students, grade, or teacher" />
+      <div id="sample-note" class="detail-card hidden">
+        <div class="detail-name">Sample roster loaded</div>
+        <div class="detail-copy">Add real students and the sample cards will disappear automatically.</div>
+      </div>
+      <div id="roster-list" class="roster-list"></div>
+    </aside>
+  </div>
+
+  <div id="student-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h3 id="student-modal-title">Add Student</h3>
+      <form id="student-form">
+        <input type="hidden" id="student-id" />
+        <div class="form-group">
+          <label for="student-first-name">First Name *</label>
+          <input type="text" id="student-first-name" required />
+        </div>
+        <div class="form-group">
+          <label for="student-last-name">Last Name *</label>
+          <input type="text" id="student-last-name" required />
+        </div>
+        <div class="form-group">
+          <label for="student-email">Email</label>
+          <input type="email" id="student-email" placeholder="e.g. student@school.org" />
+        </div>
+        <div class="form-group">
+          <label for="student-number">Student ID #</label>
+          <input type="text" id="student-number" placeholder="e.g. 123456" maxlength="30" />
+        </div>
+        <div class="form-group">
+          <label for="student-grade">Grade</label>
+          <input type="text" id="student-grade" placeholder="e.g. 3rd" />
+        </div>
+        <div class="form-group">
+          <label for="student-teacher">Teacher</label>
+          <input type="text" id="student-teacher" placeholder="e.g. Ms. Rivera" />
+        </div>
+        <div class="form-group">
+          <label for="student-notes">Notes</label>
+          <textarea id="student-notes"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <label style="display:flex; align-items:center; gap:8px; font-weight:normal; cursor:pointer;">
+            <input type="checkbox" id="student-is-active" checked style="width:16px; height:16px; cursor:pointer;" />
+            Active student
+          </label>
+          <div style="font-size:0.8rem; color:var(--ink-light); margin-top:4px;">Uncheck to mark as inactive (e.g. moved away). Inactive students are hidden from class views but remain searchable.</div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="student-modal-close" class="btn-cancel">Cancel</button>
+          <button type="submit" id="student-modal-submit" class="btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="lesson-library-modal" class="modal-overlay hidden">
+    <div class="modal lesson-library-modal">
+      <div class="lesson-lib-header">
+        <h3>Lesson Library</h3>
+        <button id="lesson-lib-close-btn" class="lesson-lib-close-btn" type="button" aria-label="Close lesson library">&#10005;</button>
+      </div>
+      <div class="lesson-lib-tabs">
+        <button class="lesson-lib-tab active" data-tab="library" type="button">Library</button>
+        <button class="lesson-lib-tab" data-tab="assignments" type="button">Grade Assignments</button>
+      </div>
+      <div id="lesson-lib-panel-library" class="lesson-lib-panel active">
+        <div class="lesson-lib-toolbar">
+          <button id="lesson-lib-import-btn" class="action-btn" type="button" style="margin:0; padding: 6px 14px;">
+            <strong>Import Images</strong>
+          </button>
+        </div>
+        <div id="lesson-lib-grid" class="lesson-lib-grid"></div>
+      </div>
+      <div id="lesson-lib-panel-assignments" class="lesson-lib-panel">
+        <div class="lesson-lib-toolbar">
+          <label for="lesson-lib-grade-select">Grade Level:</label>
+          <select id="lesson-lib-grade-select" class="lesson-lib-grade-select">
+            <option value="">Select grade…</option>
+            <option value="K">Kindergarten</option>
+            <option value="1">1st Grade</option>
+            <option value="2">2nd Grade</option>
+            <option value="3">3rd Grade</option>
+            <option value="4">4th Grade</option>
+            <option value="5">5th Grade</option>
+            <option value="multi">Multi-grade</option>
+          </select>
+          <button id="lesson-lib-add-unit-btn" class="action-btn" type="button" style="margin: 0 0 0 auto; padding: 6px 14px; font-size: 0.83rem;">+ Add Unit</button>
+        </div>
+        <div id="lesson-lib-assign-wrap" class="lesson-lib-assign-wrap">
+          <div class="lesson-lib-assign-placeholder">Select a grade to view unit assignments.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="csv-import-modal" class="modal-overlay hidden">
+    <div class="modal csv-import-modal">
+      <div class="csv-import-header">
+        <h3>Import Students from CSV</h3>
+        <button id="csv-import-close-btn" class="lesson-lib-close-btn" type="button" aria-label="Close">&#10005;</button>
+      </div>
+      <div class="csv-step-indicator">
+        <div class="csv-step active" id="csv-step-ind-1">
+          <div class="csv-step-dot">1</div>
+          <div class="csv-step-label">Upload</div>
+        </div>
+        <div class="csv-step-line"></div>
+        <div class="csv-step" id="csv-step-ind-2">
+          <div class="csv-step-dot">2</div>
+          <div class="csv-step-label">Map Columns</div>
+        </div>
+        <div class="csv-step-line"></div>
+        <div class="csv-step" id="csv-step-ind-3">
+          <div class="csv-step-dot">3</div>
+          <div class="csv-step-label">Preview &amp; Import</div>
+        </div>
+      </div>
+
+      <div id="csv-step-panel-1" class="csv-step-panel">
+        <label id="csv-drop-zone" class="csv-drop-zone" for="csv-file-input">
+          <svg viewBox="0 0 24 24" class="csv-drop-icon" aria-hidden="true"><path d="M19 15v4H5v-4H3v6h18v-6h-2zM11 3v8.17L8.41 8.59 7 10l5 5 5-5-1.41-1.41L13 11.17V3h-2z"/></svg>
+          <div class="csv-drop-text">Drop a CSV file here or <span class="csv-drop-link">browse</span></div>
+          <div id="csv-file-name" class="csv-file-name"></div>
+        </label>
+        <input type="file" id="csv-file-input" accept=".csv,text/csv" class="csv-file-input-hidden" />
+        <div class="csv-step-actions">
+          <div></div>
+          <button id="csv-step1-next" class="btn-primary" type="button" disabled>Next &#8594;</button>
+        </div>
+      </div>
+
+      <div id="csv-step-panel-2" class="csv-step-panel hidden">
+        <p class="csv-map-intro">Match each student field to the column in your CSV. Required fields are marked <span class="csv-map-required">*</span>.</p>
+        <div class="csv-map-table-wrap">
+          <table class="csv-map-table">
+            <thead><tr><th>Student Field</th><th>CSV Column</th><th>Sample Value</th></tr></thead>
+            <tbody id="csv-map-tbody"></tbody>
+          </table>
+        </div>
+        <div class="csv-step-actions">
+          <button id="csv-step2-back" class="btn-cancel" type="button">&#8592; Back</button>
+          <button id="csv-step2-next" class="btn-primary" type="button">Preview &#8594;</button>
+        </div>
+      </div>
+
+      <div id="csv-step-panel-3" class="csv-step-panel hidden">
+        <div class="csv-year-row">
+          <label for="csv-year-select" class="csv-year-label">Syncing for school year:</label>
+          <select id="csv-year-select" class="academic-year-select"></select>
+        </div>
+        <p id="csv-preview-count" class="csv-preview-count"></p>
+        <div class="csv-preview-table-wrap">
+          <table class="csv-preview-table">
+            <thead id="csv-preview-thead"></thead>
+            <tbody id="csv-preview-tbody"></tbody>
+          </table>
+        </div>
+        <div id="csv-import-result" class="csv-import-result hidden"></div>
+        <div class="csv-step-actions">
+          <button id="csv-step3-back" class="btn-cancel" type="button">&#8592; Back</button>
+          <button id="csv-step3-import" class="btn-primary" type="button">Sync Students</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="multi-grade-modal" class="modal-overlay hidden">
+    <div class="modal multi-grade-modal">
+      <div class="multi-grade-modal-header">
+        <h3>Self-Contained Multi-Grade Classes</h3>
+        <button id="multi-grade-close-btn" class="lesson-lib-close-btn" type="button" aria-label="Close">&#10005;</button>
+      </div>
+      <p class="multi-grade-directions">Check the box next to any teacher who has a self-contained class with students in multiple grade levels. Their students will be grouped into a single class regardless of grade level.</p>
+      <div id="multi-grade-list" class="multi-grade-list"></div>
+      <div class="modal-actions" style="margin-top:16px;">
+        <button id="multi-grade-done-btn" class="btn-primary" type="button">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="assessment-library-modal" class="modal-overlay hidden">
+    <div class="modal assess-lib-modal">
+      <div class="assess-lib-header">
+        <h3>Assessment Library</h3>
+        <button id="assess-lib-close-btn" class="lesson-lib-close-btn" type="button" aria-label="Close">&#10005;</button>
+      </div>
+      <div class="assess-lib-toolbar">
+        <label for="assess-lib-grade-select">Grade Level:</label>
+        <select id="assess-lib-grade-select" class="assess-lib-grade-select">
+          <option value="">Select grade…</option>
+          <option value="K">Kindergarten</option>
+          <option value="1">1st Grade</option>
+          <option value="2">2nd Grade</option>
+          <option value="3">3rd Grade</option>
+          <option value="4">4th Grade</option>
+          <option value="5">5th Grade</option>
+          <option value="multi">Multi-grade</option>
+        </select>
+        <button id="assess-lib-direction-btn" class="action-btn sub-action-btn" type="button" style="margin-left:auto; width:fit-content;">
+          <strong id="assess-lib-direction-label">1 is Best in Rating Scales</strong>
+        </button>
+      </div>
+      <div class="assess-lib-body">
+        <div id="assess-lib-content">
+          <div class="assess-lib-placeholder">Select a grade to view and edit assessments.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="export-selected-modal" class="modal-overlay hidden">
+    <div class="modal export-select-modal">
+      <div class="export-select-header">
+        <h3>Export Selected Students to CSV</h3>
+        <button id="export-selected-modal-close" class="lesson-lib-close-btn" type="button" aria-label="Close">&#10005;</button>
+      </div>
+      <div class="export-select-body">
+        <div class="export-select-panel">
+          <h4>All Students</h4>
+          <input type="text" id="export-select-search" class="export-select-search" placeholder="Search by name, grade, teacher…" autocomplete="off" />
+          <div id="export-select-all-list" class="export-select-list"></div>
+        </div>
+        <div class="export-chosen-panel">
+          <div class="export-chosen-actions">
+            <button id="export-selected-btn" class="action-btn chart-tool-btn" type="button" disabled>
+              <strong>Export Selected to CSV</strong>
+            </button>
+            <span id="export-selected-count" class="export-chosen-count">0 students selected</span>
+          </div>
+          <h4>Selected Students</h4>
+          <div id="export-select-chosen-list" class="export-chosen-list"></div>
+        </div>
+      </div>
+      <div class="modal-actions" style="margin-top: 14px;">
+        <button id="export-selected-cancel-btn" class="btn-cancel" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="app-tooltip" class="app-tooltip" aria-hidden="true"></div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

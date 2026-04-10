@@ -1,0 +1,84 @@
+iPad / PWA Migration Plan
+=========================
+Date: April 3, 2026
+
+GOAL
+----
+Convert the Electron (Windows) app into a Progressive Web App (PWA)
+that runs in Safari on an iPad. No Mac, no Xcode, no App Store required.
+
+
+HOW IT WORKS IN PRACTICE
+--------------------------
+1. All development stays on your Windows PC in VS Code (same as now).
+2. Finished files are hosted on GitHub Pages (free).
+3. On the iPad: open the URL in Safari, tap "Add to Home Screen."
+4. The app installs like a real app icon and works fully offline from then on.
+5. All student data stays on-device inside Safari's sandboxed storage — 
+   never touches a server or cloud service.
+
+
+WHAT CHANGES
+------------
+app.js + preload.js
+  → Replaced by a browser-side api.js that calls wa-sqlite directly.
+    No more Electron IPC (ipcMain / ipcRenderer) needed.
+
+db.js
+  → SQL queries stay almost identical.
+    The database driver swaps from better-sqlite3 to wa-sqlite (WebAssembly).
+    wa-sqlite uses IndexedDB as its backing store, so data persists on-device
+    automatically across restarts.
+
+New files to add:
+  manifest.json      — describes the app name, icon, display mode for "Add to Home Screen"
+  service-worker.js  — caches all HTML/CSS/JS for offline use after first load
+
+
+WHAT STAYS THE SAME
+--------------------
+- renderer.js        — almost entirely intact, no major changes
+- index.html + CSS   — minimal changes
+- window.api pattern — already perfectly structured for the backend swap
+- All SQL schema and queries — carry over nearly 1:1
+
+
+DATA / PRIVACY
+--------------
+- Student data lives only on the device in Safari's sandboxed storage.
+- Other apps cannot read it (iOS sandbox).
+- No login, no account, no internet dependency after the initial install.
+- Data is never sent anywhere unless the user explicitly uses CSV export.
+- Works identically to the Electron app in terms of privacy — 
+  arguably better than school apps that push data to a vendor's cloud.
+
+
+NEW TOOLING NEEDED (all on Windows)
+-------------------------------------
+- A local dev server for testing before deploying.
+  Simplest option: run  npx serve  in the project folder.
+  Node is already installed from the Electron setup.
+- A GitHub account + repository for GitHub Pages hosting (free).
+- VS Code Live Server extension (optional convenience alternative).
+
+
+MIGRATION STEPS (HIGH LEVEL)
+------------------------------
+1. Set up wa-sqlite (WebAssembly SQLite) in the project.
+2. Write api.js — a browser-side replacement for app.js + preload.js
+   that exposes the same window.api interface renderer.js already uses.
+3. Port db.js SQL functions to run through wa-sqlite.
+4. Add manifest.json and service-worker.js.
+5. Touch/mobile CSS pass for iPad screen sizes and touch targets.
+6. Test in Chrome/Edge on PC, then test in Safari on iPad.
+7. Push to GitHub Pages.
+
+
+NOTES
+-----
+- The window.api bridge pattern already in the code is ideal for this migration.
+  renderer.js calls window.api.getStudents() etc. — it won't need to know 
+  whether the backend is Electron IPC or a local wa-sqlite function.
+- The very first time the app URL is opened on the iPad, internet is needed
+  to download and cache everything. After that, fully offline.
+- GitHub Pages URL would look like: https://yourusername.github.io/elementary-music-app/
