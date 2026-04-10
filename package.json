@@ -1,6 +1,6 @@
 {
   "name": "elementary-music-management-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Elementary Music Management App",
   "main": "app.js",
   "scripts": {
@@ -14,10 +14,10 @@
   "type": "commonjs",
   "dependencies": {
     "better-sqlite3": "^12.8.0",
-    "electron": "^41.0.4",
     "electron-updater": "^6.8.3"
   },
   "devDependencies": {
+    "electron": "^41.0.4",
     "electron-builder": "^25.1.8",
     "electron-rebuild": "^3.2.9"
   },

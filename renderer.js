@@ -226,6 +226,8 @@ const resetStudentDataBtn = document.getElementById('reset-student-data-btn');
 const resetFactoryBtn = document.getElementById('reset-factory-btn');
 const checkForUpdatesBtn = document.getElementById('check-for-updates-btn');
 const updateStatusLine = document.getElementById('update-status-line');
+const exportRubricsBtn = document.getElementById('export-rubrics-btn');
+const importRubricsBtn = document.getElementById('import-rubrics-btn');
 const studentModal = document.getElementById('student-modal');
 const lessonLibraryModal = document.getElementById('lesson-library-modal');
 const lessonLibraryBtn = document.getElementById('lesson-library-btn');
@@ -379,6 +381,8 @@ addSeatingChartBtn.addEventListener('click', createAdditionalSeatingChart);
 settingsGearBtn.addEventListener('click', toggleSettingsMenu);
 resetStudentDataBtn.addEventListener('click', handleResetStudentData);
 resetFactoryBtn.addEventListener('click', handleResetFactoryData);
+exportRubricsBtn.addEventListener('click', handleExportRubrics);
+importRubricsBtn.addEventListener('click', handleImportRubrics);
 
 checkForUpdatesBtn.addEventListener('click', () => {
   setUpdateStatus('checking', 'Checking for updates…');
@@ -4507,6 +4511,40 @@ async function backupStudentsCsv() {
   } catch (error) {
     console.error('[backup] export failed:', error);
     alert('Backup failed. Check the console for details.');
+  }
+}
+
+async function handleExportRubrics() {
+  try {
+    const result = await window.api.exportAssessmentRubrics();
+    if (result.canceled) return;
+    if (result.count === 0) {
+      alert('No assessment rubrics found to export.');
+      return;
+    }
+    alert(`Exported ${result.count} rubric${result.count !== 1 ? 's' : ''} to:\n${result.filePath}`);
+  } catch (err) {
+    console.error('[exportRubrics] failed:', err);
+    alert('Export failed. Check the console for details.');
+  }
+}
+
+async function handleImportRubrics() {
+  try {
+    const result = await window.api.importAssessmentRubrics();
+    if (result.canceled) return;
+    if (result.error) {
+      alert(`Import failed: ${result.error}`);
+      return;
+    }
+    alert(`Imported ${result.count} rubric${result.count !== 1 ? 's' : ''}.`);
+    if (assessmentMode && assessLibraryGrade) {
+      await loadAssessmentLibraryForGrade(assessLibraryGrade);
+      renderAssessLibContent();
+    }
+  } catch (err) {
+    console.error('[importRubrics] failed:', err);
+    alert('Import failed. Check the console for details.');
   }
 }
 

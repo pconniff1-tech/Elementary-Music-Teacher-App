@@ -49,6 +49,8 @@ contextBridge.exposeInMainWorld('api', {
   addLsaCustomUnit: (unitNumber) => ipcRenderer.invoke('db.addLsaCustomUnit', unitNumber),
   getAssessmentLibrary: (gradeLevel) => ipcRenderer.invoke('db.getAssessmentLibrary', gradeLevel),
   upsertAssessmentLibraryItem: (gradeLevel, assessNum, name, scale1, scale2, scale3, scale4) => ipcRenderer.invoke('db.upsertAssessmentLibraryItem', gradeLevel, assessNum, name, scale1, scale2, scale3, scale4),
+  exportAssessmentRubrics: () => ipcRenderer.invoke('db.exportAssessmentRubrics'),
+  importAssessmentRubrics: () => ipcRenderer.invoke('db.importAssessmentRubrics'),
   getSetting: (key) => ipcRenderer.invoke('db.getSetting', key),
   setSetting: (key, value) => ipcRenderer.invoke('db.setSetting', key, value),
   getImmaScores: (studentId) => ipcRenderer.invoke('db.getImmaScores', studentId),

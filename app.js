@@ -365,6 +365,37 @@ ipcMain.handle('db.getLsaCustomUnits', async () => db.getLsaCustomUnits());
 ipcMain.handle('db.addLsaCustomUnit', async (event, unitNumber) => db.addLsaCustomUnit(unitNumber));
 ipcMain.handle('db.getAssessmentLibrary', async (event, gradeLevel) => db.getAssessmentLibrary(gradeLevel));
 ipcMain.handle('db.upsertAssessmentLibraryItem', async (event, gradeLevel, assessNum, name, scale1, scale2, scale3, scale4) => db.upsertAssessmentLibraryItem(gradeLevel, assessNum, name, scale1, scale2, scale3, scale4));
+ipcMain.handle('db.exportAssessmentRubrics', async () => {
+  const rows = db.exportAssessmentLibrary();
+  if (!rows.length) return { canceled: false, count: 0 };
+  const defaultFileName = `assessment-rubrics-${new Date().toISOString().slice(0, 10)}.json`;
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    title: 'Export Assessment Rubrics',
+    defaultPath: path.join(app.getPath('documents'), defaultFileName),
+    filters: [{ name: 'JSON Files', extensions: ['json'] }],
+  });
+  if (canceled || !filePath) return { canceled: true };
+  fs.writeFileSync(filePath, JSON.stringify(rows, null, 2), 'utf8');
+  return { canceled: false, filePath, count: rows.length };
+});
+ipcMain.handle('db.importAssessmentRubrics', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    title: 'Import Assessment Rubrics',
+    properties: ['openFile'],
+    filters: [{ name: 'JSON Files', extensions: ['json'] }],
+  });
+  if (canceled || !filePaths || !filePaths.length) return { canceled: true };
+  let rows;
+  try {
+    const text = fs.readFileSync(filePaths[0], 'utf8');
+    rows = JSON.parse(text);
+  } catch (err) {
+    return { canceled: false, error: 'Invalid file — could not parse JSON.' };
+  }
+  if (!Array.isArray(rows)) return { canceled: false, error: 'Invalid file format.' };
+  const result = db.importAssessmentLibrary(rows);
+  return { canceled: false, count: result.count };
+});
 ipcMain.handle('db.getSetting', async (event, key) => db.getSetting(key));
 ipcMain.handle('db.setSetting', async (event, key, value) => db.setSetting(key, value));
 ipcMain.handle('db.getImmaScores', async (event, studentId) => db.getImmaScores(studentId));

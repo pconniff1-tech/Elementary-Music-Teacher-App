@@ -850,6 +850,34 @@ function upsertAssessmentLibraryItem(gradeLevel, assessNum, name, scale1, scale2
   `).get(gradeLevel, Number(assessNum));
 }
 
+function exportAssessmentLibrary() {
+  return db.prepare(`
+    SELECT grade_level, assess_num, name, scale1, scale2, scale3, scale4
+    FROM assessment_library
+    ORDER BY grade_level, assess_num
+  `).all();
+}
+
+function importAssessmentLibrary(rows) {
+  const upsert = db.prepare(`
+    INSERT INTO assessment_library (grade_level, assess_num, name, scale1, scale2, scale3, scale4, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(grade_level, assess_num)
+    DO UPDATE SET name = excluded.name, scale1 = excluded.scale1, scale2 = excluded.scale2,
+      scale3 = excluded.scale3, scale4 = excluded.scale4, updated_at = CURRENT_TIMESTAMP
+  `);
+  const transaction = db.transaction((items) => {
+    for (const row of items) {
+      upsert.run(
+        row.grade_level, Number(row.assess_num),
+        row.name || null, row.scale1 || null, row.scale2 || null, row.scale3 || null, row.scale4 || null
+      );
+    }
+  });
+  transaction(rows);
+  return { count: rows.length };
+}
+
 module.exports = {
   init,
   getStudents, addStudent, updateStudent, deleteStudent,
@@ -863,7 +891,7 @@ module.exports = {
   getLsaLessons, addLsaLesson, deleteLsaLesson, setLsaLessonAudio,
   getLsaGradeUnitMap, upsertLsaGradeUnitMap, clearLsaGradeUnitSlot,
   getLsaCustomUnits, addLsaCustomUnit,
-  getAssessmentLibrary, upsertAssessmentLibraryItem,
+  getAssessmentLibrary, upsertAssessmentLibraryItem, exportAssessmentLibrary, importAssessmentLibrary,
   getInstruments, addInstrument, updateInstrument, deleteInstrument,
   getClasses, addClass, updateClass, deleteClass,
   getSeatingCharts, getSeatingChart, createSeatingChart, updateSeatingChartName, saveSeatingChartLayout, deleteSeatingChart,
