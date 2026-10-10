@@ -7,3 +7,9 @@ out/
 userData/
 .env
 secrets.js
+
+# MATS / Firebase sensitive files
+web-app/firebase-config.js
+web-app/.firebaserc
+web-app/.firebase/
+mats-service-account.json

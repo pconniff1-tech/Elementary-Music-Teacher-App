@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Music Aptitude Test</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="hidden">
+      <div class="spinner"></div>
+      <span id="loading-text">Loading…</span>
+    </div>
+
+    <!-- ── Screen: Login ───────────────────────────────────────────────────── -->
+    <div id="screen-login" class="screen active">
+      <div class="card">
+        <div class="app-logo">🎵</div>
+        <h1>Music Aptitude Test</h1>
+        <p class="subtitle">Sign in with your school Google account to begin.</p>
+        <button id="btn-google-login" class="btn-google">
+          <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
+            <path
+              fill="#EA4335"
+              d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+            />
+            <path
+              fill="#4285F4"
+              d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+            />
+            <path
+              fill="#FBBC05"
+              d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+            />
+            <path
+              fill="#34A853"
+              d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+            />
+          </svg>
+          Sign in with Google
+        </button>
+        <div id="login-error" class="error-msg"></div>
+      </div>
+    </div>
+
+    <!-- ── Screen: Setup (Teacher Code) ───────────────────────────────────── -->
+    <div id="screen-setup" class="screen">
+      <div class="card">
+        <h1>Enter Teacher Code</h1>
+        <p class="subtitle">Your teacher will give you this code. Type it exactly as shown.</p>
+        <input
+          type="text"
+          id="input-teacher-code"
+          placeholder="e.g. SMITH24"
+          maxlength="20"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+        />
+        <div id="setup-error" class="error-msg"></div>
+        <button id="btn-start-test" class="btn-primary">Start Test</button>
+      </div>
+    </div>
+
+    <!-- ── Screen: Test Type Selection ────────────────────────────────────── -->
+    <div id="screen-type" class="screen">
+      <div class="card">
+        <h1>Which test are you taking?</h1>
+        <p class="subtitle">Ask your teacher if you are not sure.</p>
+        <div class="type-btn-row">
+          <button id="btn-type-tonal" class="btn-type">
+            <span class="type-icon">🎵</span>
+            <span class="type-label">Tonal Test</span>
+          </button>
+          <button id="btn-type-rhythm" class="btn-type">
+            <span class="type-icon">🥁</span>
+            <span class="type-label">Rhythm Test</span>
+          </button>
+        </div>
+        <div id="type-error" class="error-msg"></div>
+      </div>
+    </div>
+
+    <!-- ── Screen: Test ────────────────────────────────────────────────────── -->
+    <div id="screen-test" class="screen">
+      <div class="card card-wide">
+        <!-- Progress -->
+        <div class="progress-wrap">
+          <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
+        </div>
+        <div id="progress-label" class="progress-label">Question 1 of 40</div>
+
+        <!-- Question icon (visual anchor) -->
+        <div class="question-icon-wrap">
+          <div id="question-emoji" class="question-emoji">🎵</div>
+          <div id="question-icon-label" class="question-icon-label">Question</div>
+        </div>
+
+        <!-- Audio control -->
+        <button id="btn-play-audio" class="btn-audio">
+          <span id="audio-btn-icon">▶</span> Listen
+        </button>
+        <div id="audio-status" class="audio-status"></div>
+
+        <hr class="divider" />
+
+        <!-- Answer buttons -->
+        <p style="font-size: 0.95rem; color: #555; margin-bottom: 14px">
+          Are the two patterns the <strong>same</strong> or <strong>different</strong>?
+        </p>
+        <div class="answer-row">
+          <button id="btn-same" class="btn-same">Same</button>
+          <button id="btn-diff" class="btn-diff">Different</button>
+        </div>
+
+        <!-- Next button -->
+        <button id="btn-next" class="btn-next" disabled>Next →</button>
+        <div id="test-error" class="error-msg"></div>
+      </div>
+    </div>
+
+    <!-- ── Screen: Done ────────────────────────────────────────────────────── -->
+    <div id="screen-done" class="screen">
+      <div class="card">
+        <div class="done-icon">🎉</div>
+        <h1>All Done!</h1>
+        <p class="done-message">Great job! Your answers have been saved.</p>
+        <p class="done-message" style="margin-top: 8px">You can close this tab now.</p>
+      </div>
+    </div>
+
+    <!-- Firebase SDKs (compat layer — same v8-style API) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+
+    <!-- CryptoJS for AES encryption -->
+    <script src="https://cdn.jsdelivr.net/npm/crypto-js@4.2.0/crypto-js.min.js"></script>
+
+    <!-- Firebase auto-config: served automatically by Firebase Hosting (no file needed) -->
+    <script src="/__/firebase/init.js"></script>
+
+    <!-- App logic -->
+    <script src="app.js"></script>
+  </body>
+</html>

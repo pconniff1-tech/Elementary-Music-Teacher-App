@@ -1,12 +1,13 @@
 {
   "name": "elementary-music-management-app",
-  "version": "1.0.1",
+  "version": "1.6.4",
   "description": "Elementary Music Management App",
   "main": "app.js",
   "scripts": {
     "start": "electron .",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dist": "electron-builder --win"
+    "build:local": "electron-builder --win --publish never",
+    "build:release": "dotenv -- cross-env ELECTRON_BUILDER_ALLOW_EMPTY_TAG=true electron-builder --win --publish always"
   },
   "keywords": [],
   "author": "pconniff1-tech",
@@ -14,12 +15,26 @@
   "type": "commonjs",
   "dependencies": {
     "better-sqlite3": "^12.8.0",
-    "electron-updater": "^6.8.3"
+    "cacache": "^19.0.1",
+    "crypto-js": "^4.2.0",
+    "electron-updater": "^6.8.3",
+    "eslint": "^9.39.4",
+    "node-gyp": "^12.2.0",
+    "react": "^19.2.5",
+    "tar": "^7.5.13"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
+    "@eslint/css": "^1.1.0",
+    "@eslint/json": "^1.2.0",
+    "@eslint/markdown": "^8.0.1",
+    "cross-env": "^10.1.0",
+    "dotenv-cli": "^11.0.0",
     "electron": "^41.0.4",
-    "electron-builder": "^25.1.8",
-    "electron-rebuild": "^3.2.9"
+    "electron-builder": "^26.8.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "eslint-plugin-react": "^7.37.5"
   },
   "build": {
     "appId": "com.pconniff1tech.elementarymusicapp",
@@ -28,21 +43,31 @@
     "publish": {
       "provider": "github",
       "owner": "pconniff1-tech",
-      "repo": "Elementary-Music-Teacher-App"
+      "repo": "Elementary-Music-Teacher-App",
+      "releaseType": "release"
+      
     },
     "win": {
-      "target": "nsis",
-      "icon": "icons/icon.ico"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "icons/icon.ico",
+      "artifactName": "${productName} Setup ${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "buildUniversalInstaller": true,
+      "perMachine": false
     },
-    "extraResources": [
-      { "from": "secrets.js", "to": "secrets.js" }
-    ],
     "files": [
       "**/*",
       "!node_modules/electron-builder/**",

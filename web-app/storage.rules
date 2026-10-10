@@ -1,0 +1,14 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Audio files: any authenticated user can read
+    match /Audio/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+    // Everything else: deny
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

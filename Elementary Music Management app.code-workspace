@@ -1,9 +1,9 @@
 {
-	"folders": [
-		{
-			"name": "Elementary Music Management app",
-			"path": "."
-		}
-	],
-	"settings": {}
+  "folders": [
+    {
+      "name": "Elementary Music Management app",
+      "path": ".",
+    },
+  ],
+  "settings": {},
 }

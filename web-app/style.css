@@ -1,0 +1,377 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   MATS Web App — Student Portal Styles
+   Optimized for Chromebook / tablet full-screen use
+───────────────────────────────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --clr-bg: #f5f0e8;
+  --clr-panel: #ffffff;
+  --clr-primary: #5a6e3c;
+  --clr-accent: #8b6914;
+  --clr-same: #2e7d32;
+  --clr-diff: #1565c0;
+  --clr-same-lt: #e8f5e9;
+  --clr-diff-lt: #e3f2fd;
+  --clr-text: #222222;
+  --clr-muted: #666666;
+  --clr-border: #d0c9bb;
+  --clr-error: #c62828;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+}
+
+html,
+body {
+  height: 100%;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: var(--clr-bg);
+  color: var(--clr-text);
+  font-size: 18px;
+}
+
+/* ── Screen management ─────────────────────────────────────────────────────── */
+.screen {
+  display: none;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.screen.active {
+  display: flex;
+}
+
+/* ── Card container ────────────────────────────────────────────────────────── */
+.card {
+  background: var(--clr-panel);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 40px 48px;
+  width: 100%;
+  max-width: 520px;
+  text-align: center;
+}
+
+.card-wide {
+  max-width: 680px;
+}
+
+/* ── Typography ────────────────────────────────────────────────────────────── */
+h1 {
+  font-size: 1.9rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--clr-primary);
+}
+h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.subtitle {
+  font-size: 1rem;
+  color: var(--clr-muted);
+  margin-bottom: 28px;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────────── */
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 12px 24px;
+  transition:
+    filter 0.15s,
+    transform 0.1s;
+}
+button:active {
+  transform: scale(0.97);
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary {
+  background: var(--clr-primary);
+  color: #fff;
+  width: 100%;
+  padding: 14px;
+  font-size: 1.1rem;
+}
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.btn-google {
+  background: #fff;
+  color: #333;
+  border: 1.5px solid var(--clr-border);
+  width: 100%;
+  padding: 14px;
+  font-size: 1.05rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.btn-google:hover {
+  background: #f7f7f7;
+}
+
+.btn-same {
+  background: var(--clr-same);
+  color: #fff;
+  font-size: 1.2rem;
+  padding: 18px 0;
+  flex: 1;
+  border-radius: var(--radius);
+}
+.btn-same:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+.btn-same.selected {
+  outline: 4px solid #1b5e20;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px var(--clr-same-lt);
+}
+
+.btn-diff {
+  background: var(--clr-diff);
+  color: #fff;
+  font-size: 1.2rem;
+  padding: 18px 0;
+  flex: 1;
+  border-radius: var(--radius);
+}
+.btn-diff:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+.btn-diff.selected {
+  outline: 4px solid #0d47a1;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 6px var(--clr-diff-lt);
+}
+
+.btn-audio {
+  background: var(--clr-accent);
+  color: #fff;
+  font-size: 1.1rem;
+  padding: 14px 32px;
+  border-radius: 50px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.btn-audio:hover:not(:disabled) {
+  filter: brightness(1.12);
+}
+.btn-audio.playing {
+  background: #555;
+}
+
+.btn-next {
+  background: var(--clr-primary);
+  color: #fff;
+  font-size: 1.1rem;
+  padding: 14px 40px;
+  border-radius: 50px;
+  margin-top: 8px;
+}
+.btn-next:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+/* ── Form inputs ───────────────────────────────────────────────────────────── */
+input[type='text'] {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1.5px solid var(--clr-border);
+  border-radius: var(--radius-sm);
+  font-size: 1.1rem;
+  background: #fff;
+  color: var(--clr-text);
+  text-align: center;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+input[type='text']:focus {
+  outline: none;
+  border-color: var(--clr-primary);
+}
+
+/* ── Error message ─────────────────────────────────────────────────────────── */
+.error-msg {
+  color: var(--clr-error);
+  font-size: 0.9rem;
+  min-height: 22px;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+/* ── Progress bar ──────────────────────────────────────────────────────────── */
+.progress-wrap {
+  width: 100%;
+  background: #e0dcd4;
+  border-radius: 50px;
+  height: 10px;
+  margin-bottom: 6px;
+  overflow: hidden;
+}
+.progress-bar {
+  height: 100%;
+  background: var(--clr-primary);
+  border-radius: 50px;
+  transition: width 0.35s ease;
+}
+.progress-label {
+  font-size: 0.85rem;
+  color: var(--clr-muted);
+  margin-bottom: 20px;
+}
+
+/* ── Question icon ─────────────────────────────────────────────────────────── */
+.question-icon-wrap {
+  background: var(--clr-bg);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin: 16px auto 20px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+}
+.question-emoji {
+  font-size: 4rem;
+  line-height: 1;
+  user-select: none;
+}
+.question-icon-label {
+  font-size: 0.9rem;
+  color: var(--clr-muted);
+  font-weight: 500;
+}
+
+/* ── Audio status ──────────────────────────────────────────────────────────── */
+.audio-status {
+  font-size: 0.85rem;
+  color: var(--clr-muted);
+  min-height: 20px;
+  margin-bottom: 20px;
+}
+.audio-status.placeholder-note {
+  color: #a0522d;
+}
+
+/* ── Answer buttons row ────────────────────────────────────────────────────── */
+.answer-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+/* ── Divider ───────────────────────────────────────────────────────────────── */
+.divider {
+  border: none;
+  border-top: 1px solid var(--clr-border);
+  margin: 24px 0;
+}
+
+/* ── Login screen specifics ────────────────────────────────────────────────── */
+.app-logo {
+  font-size: 3rem;
+  margin-bottom: 12px;
+}
+
+/* ── Done screen ───────────────────────────────────────────────────────────── */
+.done-icon {
+  font-size: 5rem;
+  margin-bottom: 16px;
+}
+.done-message {
+  font-size: 1.2rem;
+  color: var(--clr-muted);
+  margin-bottom: 8px;
+}
+
+/* ── Test type selection ───────────────────────────────────────────────────── */
+.type-btn-row {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin: 28px 0 16px;
+}
+.btn-type {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 28px 36px;
+  background: #fff;
+  border: 2px solid var(--clr-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 1rem;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+  min-width: 140px;
+}
+.btn-type:hover {
+  border-color: var(--clr-primary);
+  background: #f0f4ea;
+}
+.type-icon {
+  font-size: 2.4rem;
+}
+.type-label {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--clr-text);
+}
+
+/* ── Loading overlay ───────────────────────────────────────────────────────── */
+#loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(245, 240, 232, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  color: var(--clr-muted);
+  z-index: 999;
+}
+#loading-overlay.hidden {
+  display: none;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 4px solid #ccc;
+  border-top-color: var(--clr-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin-right: 14px;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
