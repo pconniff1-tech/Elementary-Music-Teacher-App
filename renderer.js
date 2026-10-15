@@ -4629,16 +4629,16 @@ function attachClassReorderDrag(button, classKey, classes) {
     button.classList.add('chart-row-dragging');
 
     let currentTarget = null;
+    let lastClientY = e.clientY;
+    let scrollFrame = null;
 
-    const onMove = (ev) => {
-      ghost.style.left = `${ev.clientX - offsetX}px`;
-      ghost.style.top = `${ev.clientY - offsetY}px`;
+    const updateDropTarget = () => {
       let hit = null;
       classList
         .querySelectorAll('.class-pill.reorder-mode:not(.chart-row-dragging)')
         .forEach((p) => {
           const r = p.getBoundingClientRect();
-          if (ev.clientY >= r.top && ev.clientY <= r.bottom) hit = p;
+          if (lastClientY >= r.top && lastClientY <= r.bottom) hit = p;
         });
       if (hit !== currentTarget) {
         if (currentTarget) currentTarget.classList.remove('chart-row-drag-over');
@@ -4647,7 +4647,35 @@ function attachClassReorderDrag(button, classKey, classes) {
       }
     };
 
+    // Scrolls the list while the cursor sits near (or beyond) its top/bottom edge,
+    // so touchpad users can reach off-screen classes without a scroll wheel.
+    const EDGE_ZONE = 40;
+    const MAX_SPEED = 14;
+    const autoScroll = () => {
+      const r = classList.getBoundingClientRect();
+      let delta = 0;
+      if (lastClientY < r.top + EDGE_ZONE) {
+        delta = -MAX_SPEED * Math.min(1, (r.top + EDGE_ZONE - lastClientY) / EDGE_ZONE);
+      } else if (lastClientY > r.bottom - EDGE_ZONE) {
+        delta = MAX_SPEED * Math.min(1, (lastClientY - (r.bottom - EDGE_ZONE)) / EDGE_ZONE);
+      }
+      if (delta !== 0) {
+        classList.scrollTop += delta;
+        updateDropTarget();
+      }
+      scrollFrame = requestAnimationFrame(autoScroll);
+    };
+    scrollFrame = requestAnimationFrame(autoScroll);
+
+    const onMove = (ev) => {
+      lastClientY = ev.clientY;
+      ghost.style.left = `${ev.clientX - offsetX}px`;
+      ghost.style.top = `${ev.clientY - offsetY}px`;
+      updateDropTarget();
+    };
+
     const onUp = async () => {
+      cancelAnimationFrame(scrollFrame);
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       ghost.remove();
@@ -4670,7 +4698,9 @@ function attachClassReorderDrag(button, classKey, classes) {
           } catch (err) {
             console.error('[class-order] persist failed:', err);
           }
+          const prevScroll = classList.scrollTop;
           renderClassLibrary();
+          classList.scrollTop = prevScroll;
         }
       }
     };
