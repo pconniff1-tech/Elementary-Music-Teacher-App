@@ -1,6 +1,6 @@
 {
   "name": "elementary-music-management-app",
-  "version": "1.6.4",
+  "version": "1.6.6",
   "description": "Elementary Music Management App",
   "main": "app.js",
   "scripts": {
