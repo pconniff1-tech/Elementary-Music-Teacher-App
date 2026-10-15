@@ -153,6 +153,9 @@ let seatingChartsCollapsed = true;
 // appears, and the reorder icon is hidden until Done is clicked.
 let seatingChartsReorderMode = false;
 let classesCollapsed = true;
+// Class list drag-reorder mode and the saved order (array of class keys).
+let classesReorderMode = false;
+let savedClassOrder = [];
 let chartSwitchRenderTimer = null;
 // Unified in-memory snapshot for the most-recent chart-altering action
 // Shape: { type: 'clear'|'arrange-rows'|'arrange-circle', items: Array }
@@ -1121,6 +1124,8 @@ const toggleSeatingChartsListBtn = document.getElementById('toggle-seating-chart
 // Reorder mode controls: gear icon enters reorder mode, done button exits it.
 const seatingChartOrderGearBtn = document.getElementById('seating-chart-order-gear-btn');
 const seatingChartOrderDoneBtn = document.getElementById('seating-chart-order-done-btn');
+const classOrderGearBtn = document.getElementById('class-order-gear-btn');
+const classOrderDoneBtn = document.getElementById('class-order-done-btn');
 const toggleClassesListBtn = document.getElementById('toggle-classes-list-btn');
 const classLibraryBody = document.getElementById('class-library-body');
 const addSeatingChartBtn = document.getElementById('add-seating-chart-btn');
@@ -1503,6 +1508,15 @@ toggleSeatingChartsListBtn.addEventListener('click', toggleSeatingChartsList);
 toggleClassesListBtn.addEventListener('click', toggleClassesList);
 addSeatingChartBtn.addEventListener('click', createAdditionalSeatingChart);
 // Reorder icon: enters reorder mode and auto-expands the list if collapsed.
+classOrderGearBtn?.addEventListener('click', () => {
+  classesReorderMode = true;
+  classesCollapsed = false;
+  renderWorkspace();
+});
+classOrderDoneBtn?.addEventListener('click', () => {
+  classesReorderMode = false;
+  renderWorkspace();
+});
 seatingChartOrderGearBtn?.addEventListener('click', () => {
   seatingChartsReorderMode = true;
   if (seatingChartsCollapsed) {
@@ -2053,6 +2067,7 @@ async function initializeWorkspace() {
   await loadAcademicYear();
   await loadCustomUnits();
   await loadAptitudeSettings();
+  await loadSavedClassOrder();
   await loadStudents(true);
   await loadLsaScoresForScope(true);
   await loadSeatingCharts(true);
@@ -2065,6 +2080,17 @@ async function initializeWorkspace() {
   await loadRecorderSongDataForScope(true);
   await refreshImmaScoreCache();
   renderWorkspace();
+}
+
+async function loadSavedClassOrder() {
+  try {
+    const raw = await window.api.getSetting('class_order');
+    const parsed = raw ? JSON.parse(raw) : [];
+    savedClassOrder = Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    console.error('[class-order] load failed:', err);
+    savedClassOrder = [];
+  }
 }
 
 async function loadRecorderSongLibrary() {
@@ -4491,7 +4517,14 @@ function getTeacherClasses() {
       classesMap.get(key).count += 1;
     });
 
+  // Classes in the saved order come first; any new classes fall back to the
+  // default grade/name sort after them.
   const result = Array.from(classesMap.values()).sort((a, b) => {
+    const ai = savedClassOrder.indexOf(a.key);
+    const bi = savedClassOrder.indexOf(b.key);
+    if (ai !== -1 && bi !== -1) return ai - bi;
+    if (ai !== -1) return -1;
+    if (bi !== -1) return 1;
     const gr = gradeRank(a.grade) - gradeRank(b.grade);
     if (gr !== 0) return gr;
     return a.label.localeCompare(b.label);
@@ -4568,12 +4601,97 @@ function getActiveClassKeyForCharts() {
   return activeClassTeacher === null ? '' : activeClassTeacher;
 }
 
+// Pointer-based drag reorder for class pills, same behavior as the seating
+// chart list. Persists the full key order in the settings table.
+function attachClassReorderDrag(button, classKey, classes) {
+  button.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+
+    const rect = button.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const offsetY = e.clientY - rect.top;
+
+    const ghost = button.cloneNode(true);
+    ghost.style.cssText = `
+      position: fixed;
+      left: ${rect.left}px;
+      top: ${rect.top}px;
+      width: ${rect.width}px;
+      opacity: 0.72;
+      pointer-events: none;
+      z-index: 9999;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+      cursor: grabbing;
+    `;
+    document.body.appendChild(ghost);
+    document.body.classList.add('chart-reorder-dragging');
+    button.classList.add('chart-row-dragging');
+
+    let currentTarget = null;
+
+    const onMove = (ev) => {
+      ghost.style.left = `${ev.clientX - offsetX}px`;
+      ghost.style.top = `${ev.clientY - offsetY}px`;
+      let hit = null;
+      classList
+        .querySelectorAll('.class-pill.reorder-mode:not(.chart-row-dragging)')
+        .forEach((p) => {
+          const r = p.getBoundingClientRect();
+          if (ev.clientY >= r.top && ev.clientY <= r.bottom) hit = p;
+        });
+      if (hit !== currentTarget) {
+        if (currentTarget) currentTarget.classList.remove('chart-row-drag-over');
+        currentTarget = hit;
+        if (currentTarget) currentTarget.classList.add('chart-row-drag-over');
+      }
+    };
+
+    const onUp = async () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      ghost.remove();
+      document.body.classList.remove('chart-reorder-dragging');
+      button.classList.remove('chart-row-dragging');
+      classList
+        .querySelectorAll('.class-pill')
+        .forEach((p) => p.classList.remove('chart-row-drag-over'));
+
+      if (currentTarget && currentTarget !== button) {
+        const keys = classes.map((c) => c.key).filter((k) => k !== GRADUATED_CLASS_KEY);
+        const srcIdx = keys.indexOf(classKey);
+        const dstIdx = keys.indexOf(currentTarget.dataset.classKey);
+        if (srcIdx !== -1 && dstIdx !== -1) {
+          const [moved] = keys.splice(srcIdx, 1);
+          keys.splice(dstIdx, 0, moved);
+          savedClassOrder = keys;
+          try {
+            await window.api.setSetting('class_order', JSON.stringify(keys));
+          } catch (err) {
+            console.error('[class-order] persist failed:', err);
+          }
+          renderClassLibrary();
+        }
+      }
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+}
+
 function renderClassLibrary() {
   // Always show the class library, even with sample roster
   classLibrary.classList.remove('hidden');
   toggleClassesListBtn.setAttribute('aria-expanded', String(!classesCollapsed));
   classLibraryBody.classList.toggle('hidden', classesCollapsed);
   classLibrary.classList.toggle('collapsed', classesCollapsed);
+  if (classOrderGearBtn) {
+    classOrderGearBtn.classList.toggle('hidden', classesReorderMode || classesCollapsed);
+  }
+  if (classOrderDoneBtn) {
+    classOrderDoneBtn.classList.toggle('hidden', !classesReorderMode || classesCollapsed);
+  }
 
   const classes = getTeacherClasses();
   if (activeClassTeacher !== null && !classes.some((entry) => entry.key === activeClassTeacher)) {
@@ -4600,6 +4718,7 @@ function renderClassLibrary() {
   }
   allClassesButton.textContent = `All Classes (${allClassesCount})`;
   allClassesButton.addEventListener('click', () => {
+    if (classesReorderMode) return;
     Promise.resolve(selectClassTeacher(null))
       .then(() => {
         renderWorkspace();
@@ -4618,6 +4737,17 @@ function renderClassLibrary() {
       button.classList.add('active');
     }
     button.textContent = `${entry.isMultiGrade ? 'Multi-Grade \u2014 ' : entry.grade ? `${entry.grade} \u2014 ` : ''}${entry.label} (${entry.count})`;
+    button.dataset.classKey = entry.key;
+    if (classesReorderMode && entry.key !== GRADUATED_CLASS_KEY) {
+      button.classList.add('reorder-mode');
+      attachClassReorderDrag(button, entry.key, classes);
+      classList.appendChild(button);
+      return;
+    }
+    if (classesReorderMode) {
+      classList.appendChild(button);
+      return;
+    }
     button.addEventListener('click', () => {
       Promise.resolve(selectClassTeacher(entry.key))
         .then(() => {
@@ -8914,6 +9044,7 @@ function toggleSeatingChartsList() {
 
 function toggleClassesList() {
   classesCollapsed = !classesCollapsed;
+  if (classesCollapsed) classesReorderMode = false;
   renderWorkspace();
 }
 

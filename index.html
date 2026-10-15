@@ -3438,7 +3438,8 @@
 
       /* Open hand on hover — only when not actively dragging */
       body:not(.chart-reorder-dragging) .chart-row.reorder-mode,
-      body:not(.chart-reorder-dragging) .chart-row.reorder-mode * {
+      body:not(.chart-reorder-dragging) .chart-row.reorder-mode *,
+      body:not(.chart-reorder-dragging) .class-pill.reorder-mode {
         cursor: grab !important;
       }
 
@@ -3449,10 +3450,12 @@
         user-select: none;
       }
 
-      .chart-row-dragging {
+      .chart-row-dragging,
+      .class-pill.chart-row-dragging {
         opacity: 0.35;
       }
 
+      .class-pill.chart-row-drag-over,
       .chart-row-drag-over {
         outline: 2px solid var(--accent);
         outline-offset: 0;
@@ -5829,6 +5832,18 @@
               </div>
               <span class="chart-library-chevron">&#9654;</span>
             </button>
+            <button
+              id="class-order-done-btn"
+              class="seating-chart-order-done-btn hidden"
+              type="button"
+            >Done</button>
+            <button
+              id="class-order-gear-btn"
+              class="multi-grade-gear-btn"
+              type="button"
+              title="Reorder classes"
+              aria-label="Reorder classes"
+            ><svg viewBox="0 0 20 20" width="15" height="15" fill="currentColor" aria-hidden="true"><rect x="1" y="3" width="12" height="2" rx="1"/><rect x="1" y="9" width="12" height="2" rx="1"/><rect x="1" y="15" width="12" height="2" rx="1"/><path d="M16.5 1 L14 5.5 L19 5.5 Z"/><path d="M16.5 19 L14 14.5 L19 14.5 Z"/></svg></button>
             <button
               id="multi-grade-gear-btn"
               class="multi-grade-gear-btn"
