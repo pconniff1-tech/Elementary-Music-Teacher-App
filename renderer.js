@@ -145,6 +145,8 @@ let manageUnitsVisible = false;
 let lsaAptitudeView = 'tonal';
 let colorDotsHidden = false;
 let activeClassTeacher = null;
+let schools = [];
+let currentSchoolContextId = 1;
 let seatingCharts = [];
 let activeSeatingChartId = null;
 let seatingChartsCollapsed = true;
@@ -411,6 +413,8 @@ async function refreshImmaScoreCache() {
       immaScoreCache.get(studentKey).set(row.academic_year, {
         tonal: row.tonal,
         rhythm: row.rhythm,
+        tonal_complete: row.tonal_complete,
+        rhythm_complete: row.rhythm_complete,
         updated_at: row.updated_at,
       });
     }
@@ -1115,6 +1119,8 @@ const seatingChartLibrary = document.getElementById('seating-chart-library');
 const seatingChartList = document.getElementById('seating-chart-list');
 const classLibrary = document.getElementById('class-library');
 const classList = document.getElementById('class-list');
+const schoolPicker = document.getElementById('school-picker');
+const schoolsModal = document.getElementById('schools-modal');
 const globalStudentSearchInput = document.getElementById('global-student-search');
 const globalStudentSearchResults = document.getElementById('global-student-search-results');
 const unitsLibrary = document.getElementById('units-library');
@@ -1268,7 +1274,10 @@ function toggleManageUnits() {
 
 // --- Ensure workspace is initialized after DOM is ready ---
 document.addEventListener('DOMContentLoaded', () => {
-  initializeWorkspace();
+  initializeWorkspace().catch((error) => {
+    console.error('[renderer] workspace initialization failed:', error);
+    alert('The workspace could not be loaded. Please restart the app or check its logs.');
+  });
   initMatsImportModal();
 });
 importStudentsCsvBtn.addEventListener('click', openCsvImportModal);
@@ -1752,40 +1761,61 @@ document.getElementById('student-form').addEventListener('submit', async (event)
     last_name: document.getElementById('student-last-name').value.trim(),
     email: document.getElementById('student-email').value.trim(),
     student_number: document.getElementById('student-number').value.trim() || null,
+    school_id:
+      document.getElementById('student-school').value === ''
+        ? null
+        : Number(document.getElementById('student-school').value),
     grade: document.getElementById('student-grade').value.trim(),
     teacher: document.getElementById('student-teacher').value.trim(),
     notes: document.getElementById('student-notes').value.trim(),
     is_active: document.getElementById('student-is-active').checked ? 1 : 0,
   };
 
-  if (id) {
-    // SEND → 'db.updateStudent'
-    const existingStudent = students.find((s) => s.id === Number(id));
-    student.lsa_easy = existingStudent ? existingStudent.lsa_easy || null : null;
-    student.lsa_medium = existingStudent ? existingStudent.lsa_medium || null : null;
-    student.lsa_difficult = existingStudent ? existingStudent.lsa_difficult || null : null;
-    student.lsa_units = existingStudent ? JSON.stringify(existingStudent.lsa_units || {}) : null;
-    student.recorder_color = existingStudent ? existingStudent.recorder_color || null : null;
-    student.good_news_shared = existingStudent ? (existingStudent.good_news_shared ? 1 : 0) : 0;
-    student.is_active = student.is_active === 0 ? 0 : 1;
-    student.id = Number(id);
-    // SEND → 'db.updateStudent'
-    await window.api.updateStudent(student);
-  } else {
-    student.lsa_units = null;
-    student.recorder_color = null;
-    student.good_news_shared = 0;
-    student.is_active = 1;
-    // SEND → 'db.addStudent'
-    await window.api.addStudent(student);
+  try {
+    if (id) {
+      // SEND → 'db.updateStudent'
+      const existingStudent = students.find((s) => s.id === Number(id));
+      student.lsa_easy = existingStudent ? existingStudent.lsa_easy || null : null;
+      student.lsa_medium = existingStudent ? existingStudent.lsa_medium || null : null;
+      student.lsa_difficult = existingStudent ? existingStudent.lsa_difficult || null : null;
+      student.lsa_units = existingStudent ? JSON.stringify(existingStudent.lsa_units || {}) : null;
+      student.recorder_color = existingStudent ? existingStudent.recorder_color || null : null;
+      student.color_dot = existingStudent ? existingStudent.color_dot || null : null;
+      student.good_news_shared = existingStudent ? (existingStudent.good_news_shared ? 1 : 0) : 0;
+      student.is_active = student.is_active === 0 ? 0 : 1;
+      student.id = Number(id);
+      // SEND → 'db.updateStudent'
+      await window.api.updateStudent(student);
+    } else {
+      student.lsa_units = null;
+      student.recorder_color = null;
+      student.good_news_shared = 0;
+      student.is_active = 1;
+      // SEND → 'db.addStudent'
+      await window.api.addStudent(student);
+    }
+  } catch (error) {
+    console.error('[student] failed to save:', error);
+    alert(`Could not save student: ${error.message}`);
+    return;
   }
 
   closeStudentModal();
   studentSearchInput.value = '';
   await loadStudents(true);
+  if (
+    activeClassTeacher !== null &&
+    activeClassTeacher !== UNASSIGNED_CLASS_KEY &&
+    !getTeacherClasses().some((entry) => entry.key === activeClassTeacher)
+  ) {
+    await selectClassTeacher(null);
+    return;
+  }
   await loadLsaScoresForScope(true);
   await loadSeatingCharts(true);
   await loadRecorderSongDataForScope(true);
+  await loadPenNotesForScope(true);
+  await refreshImmaScoreCache();
   if (activeSeatingChartId) {
     await persistActiveSeatingChart();
   }
@@ -1800,7 +1830,8 @@ const GLOBAL_STUDENT_SEARCH_RESULT_LIMIT = 20;
 
 function getGlobalSearchMetaLabel(student) {
   if (student.graduated_year) return `Graduated ${student.graduated_year}`;
-  return getTeacherLabel(student.teacher);
+  const school = schools.find((entry) => entry.id === student.school_id);
+  return `${school ? school.name : 'Unassigned'} · ${getTeacherLabel(student.teacher)}`;
 }
 
 function closeGlobalStudentSearchResults() {
@@ -1855,6 +1886,18 @@ async function selectGlobalStudentSearchResult(studentId) {
   globalStudentSearchInput.value = '';
   if (!student) return;
 
+  if (
+    !student.graduated_year &&
+    student.school_id != null &&
+    student.school_id !== currentSchoolContextId
+  ) {
+    const school = schools.find((entry) => entry.id === student.school_id);
+    if (!school?.is_active) {
+      alert('This student belongs to an archived school. Reactivate it to view their class.');
+      return;
+    }
+    await switchSchool(student.school_id);
+  }
   const targetKey = getClassKeyForStudent(student);
   if (activeClassTeacher !== targetKey) {
     await selectClassTeacher(targetKey);
@@ -2067,6 +2110,7 @@ async function initializeWorkspace() {
   await loadAcademicYear();
   await loadCustomUnits();
   await loadAptitudeSettings();
+  await loadSchools();
   await loadSavedClassOrder();
   await loadStudents(true);
   await loadLsaScoresForScope(true);
@@ -2084,7 +2128,7 @@ async function initializeWorkspace() {
 
 async function loadSavedClassOrder() {
   try {
-    const raw = await window.api.getSetting('class_order');
+    const raw = await window.api.getSetting(classOrderSettingKey());
     const parsed = raw ? JSON.parse(raw) : [];
     savedClassOrder = Array.isArray(parsed) ? parsed : [];
   } catch (err) {
@@ -2092,6 +2136,264 @@ async function loadSavedClassOrder() {
     savedClassOrder = [];
   }
 }
+
+function classOrderSettingKey() {
+  return currentSchoolContextId === 1
+    ? 'class_order'
+    : `class_order_school_${currentSchoolContextId}`;
+}
+
+function multiGradeSettingKey() {
+  return currentSchoolContextId === 1
+    ? 'multiGradeTeachers'
+    : `multiGradeTeachers_school_${currentSchoolContextId}`;
+}
+
+async function loadSchools(preferredId = currentSchoolContextId) {
+  schools = await window.api.getSchools();
+  const active = schools.filter((school) => school.is_active);
+  currentSchoolContextId = active.some((school) => school.id === Number(preferredId))
+    ? Number(preferredId)
+    : (active[0]?.id ?? null);
+  schoolPicker.innerHTML = '';
+  if (!active.length) {
+    const option = document.createElement('option');
+    option.textContent = 'No active schools';
+    option.value = '';
+    schoolPicker.appendChild(option);
+  }
+  for (const school of active) {
+    const option = document.createElement('option');
+    option.value = String(school.id);
+    option.textContent = school.name;
+    schoolPicker.appendChild(option);
+  }
+  schoolPicker.value = currentSchoolContextId == null ? '' : String(currentSchoolContextId);
+  multiGradeTeachers = new Set(JSON.parse(localStorage.getItem(multiGradeSettingKey()) || '[]'));
+}
+
+async function switchSchool(id) {
+  schoolPicker.disabled = true;
+  classList.inert = true;
+  try {
+    await loadSchools(id);
+    await loadSavedClassOrder();
+    classesReorderMode = false;
+    selectedStudentId = null;
+    selectedStudentIds.clear();
+    await selectClassTeacher(null);
+  } finally {
+    schoolPicker.disabled = false;
+    classList.inert = false;
+  }
+}
+
+function populateSchoolSelect(select, selectedId, includeUnassigned = false) {
+  select.innerHTML = '';
+  if (includeUnassigned) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = 'Unassigned Students';
+    select.appendChild(option);
+  }
+  for (const school of schools) {
+    if (!school.is_active && school.id !== selectedId) continue;
+    const option = document.createElement('option');
+    option.value = String(school.id);
+    option.textContent = school.is_active ? school.name : `${school.name} (archived)`;
+    select.appendChild(option);
+  }
+  select.value = selectedId == null ? '' : String(selectedId);
+}
+
+async function refreshSchoolWorkspace(preferredId = currentSchoolContextId) {
+  await loadStudents(true);
+  await switchSchool(preferredId);
+  if (!schools.some((school) => school.id === schoolManagementSelectedId)) {
+    schoolManagementSelectedId = currentSchoolContextId;
+  }
+  renderSchoolsModal();
+}
+
+let schoolManagementSelectedId = null;
+
+function addSchoolManagementButton(row, label, action) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'ghost-btn';
+  button.textContent = label;
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      await action();
+    } catch (error) {
+      console.error('[schools]', error);
+      document.getElementById('schools-error').textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  });
+  row.appendChild(button);
+  return button;
+}
+
+function renderSchoolsModal() {
+  const list = document.getElementById('schools-list');
+  const teachersList = document.getElementById('school-teachers-list');
+  list.innerHTML = '';
+  teachersList.innerHTML = '';
+  const selectSchool = (schoolId) => {
+    schoolManagementSelectedId = schoolId;
+    for (const input of list.querySelectorAll('.school-name-input')) {
+      input.setAttribute('aria-current', String(Number(input.dataset.schoolId) === schoolId));
+    }
+    renderSchoolTeachers();
+  };
+  for (const school of schools) {
+    const row = document.createElement('div');
+    row.className = 'school-management-row';
+    const name = document.createElement('input');
+    name.className = 'school-name-input';
+    name.dataset.schoolId = school.id;
+    name.value = school.name;
+    name.readOnly = true;
+    name.setAttribute('aria-label', `Name of ${school.name}`);
+    name.setAttribute('aria-current', String(school.id === schoolManagementSelectedId));
+    name.setAttribute('aria-describedby', 'school-selection-hint');
+    name.addEventListener('click', () => {
+      if (name.readOnly) selectSchool(school.id);
+    });
+    name.addEventListener('keydown', (event) => {
+      if (name.readOnly && (event.key === 'Enter' || event.key === ' ')) {
+        event.preventDefault();
+        selectSchool(school.id);
+      }
+    });
+    row.appendChild(name);
+    const editButton = addSchoolManagementButton(row, 'Edit', async () => {
+      if (name.readOnly) {
+        name.readOnly = false;
+        editButton.textContent = 'Save';
+        document.getElementById('schools-error').textContent = '';
+        name.focus();
+        name.select();
+        return;
+      }
+      await window.api.renameSchool(school.id, name.value);
+      document.getElementById('schools-error').textContent = '';
+      await refreshSchoolWorkspace();
+    });
+    addSchoolManagementButton(row, school.is_active ? 'Inactivate' : 'Reactivate', async () => {
+      if (
+        school.is_active &&
+        !window.confirm(
+          `Inactivate ${school.name}? Its students will move to Unassigned Students. Their history will be preserved.`
+        )
+      )
+        return;
+      await window.api.updateSchoolStatus(school.id, !school.is_active);
+      await refreshSchoolWorkspace();
+    });
+    if (school.id !== 1) {
+      addSchoolManagementButton(row, 'Delete', async () => {
+        if (!window.confirm(`Delete the empty school ${school.name}?`)) return;
+        await window.api.deleteSchool(school.id);
+        await refreshSchoolWorkspace();
+      });
+    }
+    list.appendChild(row);
+  }
+  renderSchoolTeachers();
+}
+
+function renderSchoolTeachers() {
+  const teachersList = document.getElementById('school-teachers-list');
+  teachersList.innerHTML = '';
+  const selectedSchool = schools.find((school) => school.id === schoolManagementSelectedId);
+  document.getElementById('school-teachers-heading').textContent = selectedSchool
+    ? `Teachers in ${selectedSchool.name}`
+    : 'Teachers in selected school';
+  const teachers = Array.from(
+    new Set(
+      students
+        .filter(
+          (student) =>
+            !student.isSample &&
+            !student.graduated_year &&
+            selectedSchool &&
+            student.school_id === selectedSchool.id
+        )
+        .map((student) => normalizeTeacher(student.teacher))
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b));
+  if (!teachers.length) teachersList.textContent = 'No teachers in the selected school.';
+  for (const teacher of teachers) {
+    const row = document.createElement('div');
+    row.className = 'school-management-row school-teacher-row';
+    const label = document.createElement('span');
+    label.textContent = teacher;
+    row.appendChild(label);
+    const button = addSchoolManagementButton(row, 'Inactivate', async () => {
+      if (
+        !window.confirm(
+          `Move all students of ${teacher} at ${selectedSchool.name} to Unassigned Students? Their history will be preserved.`
+        )
+      )
+        return;
+      await window.api.archiveTeacher(selectedSchool.id, teacher);
+      document.getElementById('schools-error').textContent = '';
+      await refreshSchoolWorkspace();
+    });
+    button.className = 'teacher-inactivate-btn';
+    button.setAttribute('aria-label', `Inactivate ${teacher}`);
+    teachersList.appendChild(row);
+  }
+}
+
+schoolPicker.addEventListener('change', () => {
+  switchSchool(Number(schoolPicker.value)).catch((error) => {
+    console.error('[schools] failed to switch school:', error);
+    alert('Could not switch schools. Please try again.');
+  });
+});
+document.getElementById('manage-schools-btn').addEventListener('click', () => {
+  document.getElementById('schools-error').textContent = '';
+  schoolManagementSelectedId = currentSchoolContextId;
+  renderSchoolsModal();
+  schoolsModal.classList.remove('hidden');
+});
+for (const id of ['schools-close', 'schools-done']) {
+  document.getElementById(id).addEventListener('click', () => schoolsModal.classList.add('hidden'));
+}
+schoolsModal.addEventListener('click', (event) => {
+  if (event.target === schoolsModal) schoolsModal.classList.add('hidden');
+});
+document.getElementById('school-add').addEventListener('click', async () => {
+  const input = document.getElementById('school-name');
+  try {
+    const school = await window.api.addSchool(input.value);
+    input.value = '';
+    document.getElementById('schools-error').textContent = '';
+    schoolManagementSelectedId = school.id;
+    await refreshSchoolWorkspace(school.id);
+  } catch (error) {
+    console.error('[schools] failed to add school:', error);
+    document.getElementById('schools-error').textContent = error.message;
+  }
+});
+document.getElementById('csv-add-school').addEventListener('click', async () => {
+  const input = document.getElementById('csv-new-school-name');
+  try {
+    const school = await window.api.addSchool(input.value);
+    input.value = '';
+    await loadSchools(currentSchoolContextId);
+    populateSchoolSelect(document.getElementById('csv-school'), school.id);
+  } catch (error) {
+    console.error('[csv-import] failed to add school:', error);
+    alert(`Could not add school: ${error.message}`);
+  }
+});
 
 async function loadRecorderSongLibrary() {
   try {
@@ -2130,7 +2432,7 @@ async function loadLsaUnitPlaceholderPositions(skipRender = false) {
     return;
   }
 
-  const classKey = getActiveClassKeyForCharts();
+  const classKey = getLsaScopeKey();
   let rows = [];
   try {
     rows = await window.api.getLsaUnitPlaceholders(classKey);
@@ -2157,7 +2459,7 @@ async function loadLsaUnitPlaceholderPositions(skipRender = false) {
 }
 
 async function loadLsaUnitPromptImages(skipRender = false) {
-  const classKey = getActiveClassKeyForCharts();
+  const classKey = getLsaScopeKey();
 
   // Clear existing data for this class key
   Array.from(lsaUnitPromptImages.keys()).forEach((key) => {
@@ -2380,7 +2682,7 @@ function applySeatingChartItems(items, arrangement = '') {
   // If the saved chart was a circle arrangement, recompute circle sizing and teacher position
   // so cards render at the correct compact size without requiring a manual neaten/arrange.
   if (arrangement === 'circle') {
-    const placed = students.filter((s) => getStudentLayout(s.id).placed);
+    const placed = getStudentsInActiveScope().filter((s) => getStudentLayout(s.id).placed);
     if (placed.length > 0) {
       computeCircleSlots(placed, CANVAS_W, CANVAS_H);
     }
@@ -2734,6 +3036,11 @@ async function handleResetFactoryData() {
 
   try {
     await window.api.resetFactoryData();
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('multiGradeTeachers_school_')) localStorage.removeItem(key);
+    }
+    await loadSchools(1);
+    await loadSavedClassOrder();
     selectedStudentId = null;
     activeClassTeacher = null;
     activeSeatingChartId = null;
@@ -2838,6 +3145,10 @@ function renderGradebookClassSubtitle() {
     classLabel = 'Sample Roster';
   } else if (activeClassTeacher === null) {
     classLabel = 'All Classes';
+  } else if (activeClassTeacher === UNASSIGNED_CLASS_KEY) {
+    classLabel = 'Unassigned Students';
+  } else if (activeClassTeacher === GRADUATED_CLASS_KEY) {
+    classLabel = 'Graduated Students';
   } else {
     const { teacher, grade } = parseClassKey(activeClassTeacher);
     const name = getTeacherLabel(teacher);
@@ -3370,7 +3681,7 @@ function renderAttendanceGrid() {
   const dateColumns = Array.from(dateSet).sort((a, b) => a.localeCompare(b));
   const headerCells = dateColumns
     .map((dateKey) => {
-      const isDisabled = activeClassTeacher === null;
+      const isDisabled = !hasSelectedClassContext();
       const cls = 'att-date-header' + (isDisabled ? ' att-date-header-disabled' : '');
       const title = isDisabled
         ? 'Date editing disabled in All Classes view'
@@ -3442,7 +3753,7 @@ function renderAttendanceGrid() {
     });
   });
 
-  if (activeClassTeacher !== null) {
+  if (hasSelectedClassContext()) {
     attendanceCanvas.querySelectorAll('.att-date-header').forEach((th) => {
       th.addEventListener('click', () => openAttDateEditPopup(th.dataset.dateKey, th));
     });
@@ -3572,7 +3883,7 @@ function renderLsaGrid() {
     })
     .join('');
 
-  const classKey = getActiveClassKeyForCharts();
+  const classKey = getLsaScopeKey();
 
   // Build group header row — colspan varies per unit depending on note columns
   const lsaGroupHeaders = Array.from({ length: totalLsaUnits }, (_, i) => {
@@ -4080,6 +4391,7 @@ async function renderImmaGrid() {
       <button id="imma-history-toggle-btn" class="imma-history-toggle-btn" type="button">
         ${immaHistoryVisible ? 'Hide Previous Years' : 'Show Previous Years'}
       </button>
+      <span class="imma-unfinished-legend"><span aria-hidden="true"></span> Unfinished MATS test</span>
       <button id="btn-mats-import-open" class="imma-mats-btn" type="button">MATS Import…</button>
     </div>
     <table class="imma-table">
@@ -4133,16 +4445,24 @@ async function renderImmaGrid() {
               'rhythm',
               'cell'
             );
+            const tonalUnfinished = score.tonal != null && score.tonal_complete === 0;
+            const rhythmUnfinished = score.rhythm != null && score.rhythm_complete === 0;
+            const tonalMarker = tonalUnfinished ? ' imma-unfinished' : '';
+            const rhythmMarker = rhythmUnfinished ? ' imma-unfinished' : '';
+            const tonalDescription = tonalUnfinished ? ' title="MATS test not finished"' : '';
+            const rhythmDescription = rhythmUnfinished ? ' title="MATS test not finished"' : '';
 
             if (isActiveYear) {
               return `
-                <td class="imma-td-score">
+                <td class="imma-td-score${tonalMarker}"${tonalDescription}>
                   <input type="number" class="imma-score-input imma-active-score-input ${tonalCellClass}" data-field="tonal" min="0" max="40"
+                    ${tonalUnfinished ? 'aria-label="Tonal score, MATS test not finished"' : ''}
                     value="${currentScore.tonal != null ? currentScore.tonal : ''}"
                     placeholder="—" />
                 </td>
-                <td class="imma-td-score">
+                <td class="imma-td-score${rhythmMarker}"${rhythmDescription}>
                   <input type="number" class="imma-score-input imma-active-score-input ${rhythmCellClass}" data-field="rhythm" min="0" max="40"
+                    ${rhythmUnfinished ? 'aria-label="Rhythm score, MATS test not finished"' : ''}
                     value="${currentScore.rhythm != null ? currentScore.rhythm : ''}"
                     placeholder="—" />
                 </td>`;
@@ -4151,10 +4471,10 @@ async function renderImmaGrid() {
             const tonalText = score.tonal != null ? escHtml(String(score.tonal)) : '—';
             const rhythmText = score.rhythm != null ? escHtml(String(score.rhythm)) : '—';
             return `
-              <td class="imma-td-score imma-history-score ${tonalCellClass}${score.tonal == null ? ' imma-history-missing' : ''}">
+              <td class="imma-td-score imma-history-score ${tonalCellClass}${score.tonal == null ? ' imma-history-missing' : ''}${tonalMarker}"${tonalDescription}>
                 ${tonalText}
               </td>
-              <td class="imma-td-score imma-history-score ${rhythmCellClass}${score.rhythm == null ? ' imma-history-missing' : ''}">
+              <td class="imma-td-score imma-history-score ${rhythmCellClass}${score.rhythm == null ? ' imma-history-missing' : ''}${rhythmMarker}"${rhythmDescription}>
                 ${rhythmText}
               </td>`;
           })
@@ -4239,26 +4559,7 @@ async function renderImmaGrid() {
 
 async function mergeMatsResultsIntoImmaScores(results) {
   const targetYear = currentAcademicYear || getDefaultAcademicYear();
-  const mergedScores = new Map();
-
-  for (const result of results || []) {
-    const studentId = Number(result?.student_id);
-    if (!Number.isFinite(studentId)) continue;
-
-    const testType = result.test_type === 'rhythm' ? 'rhythm' : 'tonal';
-    const existing = mergedScores.get(studentId) || getImmaScoreEntry(studentId, targetYear) || {};
-    const nextScore = {
-      tonal: existing.tonal ?? null,
-      rhythm: existing.rhythm ?? null,
-    };
-    nextScore[testType] = result.score ?? null;
-    mergedScores.set(studentId, nextScore);
-  }
-
-  for (const [studentId, score] of mergedScores.entries()) {
-    await window.api.upsertImmaScore(studentId, targetYear, score.tonal, score.rhythm);
-  }
-
+  await window.api.importMatsScores(targetYear, results);
   await refreshImmaScoreCache();
   return targetYear;
 }
@@ -4474,11 +4775,13 @@ function gradeRank(grade) {
 // Sentinel class_key for the graduated-students bucket — deliberately not a
 // real `teacher||grade` pair so it can never collide with a real class.
 const GRADUATED_CLASS_KEY = '__GRADUATED__';
+const UNASSIGNED_CLASS_KEY = '__UNASSIGNED_STUDENTS__';
 
 // Mirrors the grouping logic in getTeacherClasses so any caller (search,
 // class list) resolves the exact same class_key for a given student.
 function getClassKeyForStudent(student) {
   if (student.graduated_year) return GRADUATED_CLASS_KEY;
+  if (student.school_id == null) return UNASSIGNED_CLASS_KEY;
   const teacher = normalizeTeacher(student.teacher);
   const isMultiGrade = !teacher || multiGradeTeachers.has(teacher);
   const grade = isMultiGrade ? '' : normalizeGrade(student.grade) || '';
@@ -4499,6 +4802,7 @@ function getTeacherClasses() {
         graduatedCount++;
         return;
       }
+      if (currentSchoolContextId === null || student.school_id !== currentSchoolContextId) return;
       const teacher = normalizeTeacher(student.teacher);
       // Unassigned teacher and multi-grade teachers always merge all grades into one class
       const isMultiGrade = !teacher || multiGradeTeachers.has(teacher);
@@ -4588,17 +4892,32 @@ function normalizeGrade(grade) {
 }
 
 function getActiveClassGrade() {
-  if (!activeClassTeacher) return null;
+  if (
+    !activeClassTeacher ||
+    activeClassTeacher === GRADUATED_CLASS_KEY ||
+    activeClassTeacher === UNASSIGNED_CLASS_KEY
+  )
+    return null;
   const { grade } = parseClassKey(activeClassTeacher);
   return grade || null;
 }
 
 function hasSelectedClassContext() {
-  return activeClassTeacher !== null;
+  return activeClassTeacher !== null && activeClassTeacher !== UNASSIGNED_CLASS_KEY;
 }
 
 function getActiveClassKeyForCharts() {
-  return activeClassTeacher === null ? '' : activeClassTeacher;
+  if (activeClassTeacher === null || activeClassTeacher === UNASSIGNED_CLASS_KEY) return '';
+  if (activeClassTeacher === GRADUATED_CLASS_KEY) return activeClassTeacher;
+  return `school:${currentSchoolContextId}::${activeClassTeacher}`;
+}
+
+function getLsaScopeKey() {
+  if (activeClassTeacher === UNASSIGNED_CLASS_KEY) return UNASSIGNED_CLASS_KEY;
+  if (activeClassTeacher === null && currentSchoolContextId !== null) {
+    return `school:${currentSchoolContextId}::__ALL__`;
+  }
+  return getActiveClassKeyForCharts();
 }
 
 // Pointer-based drag reorder for class pills, same behavior as the seating
@@ -4607,6 +4926,7 @@ function attachClassReorderDrag(button, classKey, classes) {
   button.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
     e.preventDefault();
+    schoolPicker.disabled = true;
 
     const rect = button.getBoundingClientRect();
     const offsetX = e.clientX - rect.left;
@@ -4675,6 +4995,7 @@ function attachClassReorderDrag(button, classKey, classes) {
     };
 
     const onUp = async () => {
+      schoolPicker.disabled = false;
       cancelAnimationFrame(scrollFrame);
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
@@ -4694,7 +5015,7 @@ function attachClassReorderDrag(button, classKey, classes) {
           keys.splice(dstIdx, 0, moved);
           savedClassOrder = keys;
           try {
-            await window.api.setSetting('class_order', JSON.stringify(keys));
+            await window.api.setSetting(classOrderSettingKey(), JSON.stringify(keys));
           } catch (err) {
             console.error('[class-order] persist failed:', err);
           }
@@ -4724,22 +5045,19 @@ function renderClassLibrary() {
   }
 
   const classes = getTeacherClasses();
-  if (activeClassTeacher !== null && !classes.some((entry) => entry.key === activeClassTeacher)) {
+  if (
+    activeClassTeacher !== null &&
+    activeClassTeacher !== UNASSIGNED_CLASS_KEY &&
+    !classes.some((entry) => entry.key === activeClassTeacher)
+  ) {
     activeClassTeacher = null;
   }
 
   classList.innerHTML = '';
 
-  if (classes.length === 0) {
-    const emptyState = document.createElement('div');
-    emptyState.className = 'chart-library-empty';
-    emptyState.textContent =
-      'No classes yet. Add students with teacher names to create class filters.';
-    classList.appendChild(emptyState);
-    return;
-  }
-
-  const allClassesCount = classes.reduce((sum, entry) => sum + entry.count, 0);
+  const allClassesCount = classes
+    .filter((entry) => entry.key !== GRADUATED_CLASS_KEY)
+    .reduce((sum, entry) => sum + entry.count, 0);
   const allClassesButton = document.createElement('button');
   allClassesButton.type = 'button';
   allClassesButton.className = 'class-pill';
@@ -4789,6 +5107,18 @@ function renderClassLibrary() {
     });
     classList.appendChild(button);
   });
+  const pool = document.createElement('button');
+  pool.type = 'button';
+  pool.className = 'class-pill';
+  pool.classList.toggle('active', activeClassTeacher === UNASSIGNED_CLASS_KEY);
+  pool.textContent = `Unassigned Students (${students.filter((student) => !student.isSample && student.school_id == null && !student.graduated_year).length})`;
+  pool.addEventListener('click', () => {
+    if (classesReorderMode) return;
+    selectClassTeacher(UNASSIGNED_CLASS_KEY).catch((error) =>
+      console.error('[renderer] failed to switch class context:', error)
+    );
+  });
+  classList.appendChild(pool);
 }
 
 function renderSeatingChartLibrary() {
@@ -5008,7 +5338,12 @@ function renderRoster() {
     if (activeFilter === 'placed' || layout.placed) {
       return false;
     }
-    if (!showInactive && student.is_active === 0) {
+    if (
+      !showInactive &&
+      student.is_active === 0 &&
+      activeClassTeacher !== UNASSIGNED_CLASS_KEY &&
+      activeClassTeacher !== GRADUATED_CLASS_KEY
+    ) {
       return false;
     }
     return !query || getStudentSearchText(student).includes(query);
@@ -5046,7 +5381,7 @@ function renderChart() {
     }
   });
 
-  const placedStudents = students.filter((student) => {
+  const placedStudents = getStudentsInActiveScope().filter((student) => {
     const layout = getStudentLayout(student.id);
     return activeFilter !== 'roster' && layout.placed && student.is_active !== 0;
   });
@@ -5171,12 +5506,7 @@ function renderChart() {
         const finalPos = lsaUnitPlaceholderPositions.get(placeholderKey);
         if (finalPos && window.api.upsertLsaUnitPlaceholder) {
           window.api
-            .upsertLsaUnitPlaceholder(
-              getActiveClassKeyForCharts(),
-              activeLsaUnit,
-              finalPos.x,
-              finalPos.y
-            )
+            .upsertLsaUnitPlaceholder(getLsaScopeKey(), activeLsaUnit, finalPos.x, finalPos.y)
             .catch((error) =>
               console.error('[renderer] failed to persist LSA placeholder position:', error)
             );
@@ -5368,7 +5698,7 @@ function getLsaPlaceholderKey() {
 }
 
 function getLsaUnitKey(unitNumber) {
-  return `${getActiveClassKeyForCharts()}::unit-${Number(unitNumber)}`;
+  return `${getLsaScopeKey()}::unit-${Number(unitNumber)}`;
 }
 
 function clampLsaPlaceholderPosition(x, y, placeholderElement) {
@@ -6092,15 +6422,26 @@ function getStudentsInActiveScope() {
     return students.filter((student) => Boolean(student.graduated_year));
   }
 
+  if (activeClassTeacher === UNASSIGNED_CLASS_KEY) {
+    return students.filter(
+      (student) => !student.isSample && student.school_id == null && !student.graduated_year
+    );
+  }
+
   if (usingSampleRoster || activeClassTeacher === null) {
     return students.filter(
-      (student) => !student.graduated_year && (showInactive || student.is_active !== 0)
+      (student) =>
+        !student.graduated_year &&
+        (usingSampleRoster ||
+          (currentSchoolContextId !== null && student.school_id === currentSchoolContextId)) &&
+        (showInactive || student.is_active !== 0)
     );
   }
 
   const { teacher, grade } = parseClassKey(activeClassTeacher);
   return students.filter((student) => {
     if (student.graduated_year) return false;
+    if (student.school_id !== currentSchoolContextId) return false;
     if (!showInactive && student.is_active === 0) return false;
     if (normalizeTeacher(student.teacher) !== teacher) return false;
     if (grade) return (normalizeGrade(student.grade) || '') === grade;
@@ -6119,7 +6460,11 @@ function renderCounts() {
 
   const teacherLabel = document.getElementById('chart-teacher-label');
   if (teacherLabel) {
-    if (!usingSampleRoster && activeClassTeacher !== null) {
+    if (activeClassTeacher === UNASSIGNED_CLASS_KEY) {
+      teacherLabel.textContent = 'Unassigned Students';
+    } else if (activeClassTeacher === GRADUATED_CLASS_KEY) {
+      teacherLabel.textContent = 'Graduated Students';
+    } else if (!usingSampleRoster && activeClassTeacher !== null) {
       const { teacher, grade } = parseClassKey(activeClassTeacher);
       const name = getTeacherLabel(teacher);
       teacherLabel.textContent = grade ? `${name} (${grade})` : name;
@@ -6429,6 +6774,8 @@ function buildStudentUpdatePayload(student, overrides = {}) {
     email: student.email || null,
     grade: student.grade || null,
     teacher: student.teacher || null,
+    school_id: student.school_id ?? null,
+    is_active: student.is_active === 0 ? 0 : 1,
     notes: student.notes || null,
     lsa_easy: student.lsa_easy || null,
     lsa_medium: student.lsa_medium || null,
@@ -6771,7 +7118,7 @@ function renderMultiGradeModal() {
   const allTeachers = Array.from(
     new Set(
       students
-        .filter((s) => !s.isSample)
+        .filter((s) => !s.isSample && s.school_id === currentSchoolContextId && !s.graduated_year)
         .map((s) => normalizeTeacher(s.teacher))
         .filter(Boolean)
     )
@@ -6798,7 +7145,7 @@ function renderMultiGradeModal() {
       } else {
         multiGradeTeachers.delete(teacher);
       }
-      localStorage.setItem('multiGradeTeachers', JSON.stringify(Array.from(multiGradeTeachers)));
+      localStorage.setItem(multiGradeSettingKey(), JSON.stringify(Array.from(multiGradeTeachers)));
       // Reset active class if it was split/merged by this change
       activeClassTeacher = null;
       renderWorkspace();
@@ -7422,7 +7769,7 @@ async function assignUnitFromLibrary(lesson) {
   const unitNumber = lessonLibraryPickUnit;
   if (!unitNumber || !lesson) return;
 
-  const classKey = getActiveClassKeyForCharts();
+  const classKey = getLsaScopeKey();
   const key = getLsaUnitKey(unitNumber);
 
   try {
@@ -8016,6 +8363,8 @@ function openCsvImportModal() {
   csvMapping = {};
   csvImporting = false;
   pendingCsvImport = null;
+  populateSchoolSelect(document.getElementById('csv-school'), currentSchoolContextId);
+  document.getElementById('csv-new-school-name').value = '';
   csvResolvePanel.classList.add('hidden');
   csvFileInput.value = '';
   csvFileNameDisplay.textContent = '';
@@ -8058,7 +8407,9 @@ const MERGE_TABLE_ROW_FORMATTERS = {
   seating_chart_items: (row) =>
     `${row.placed ? 'Placed' : 'Unplaced'}${row.attendance ? `, attendance: ${row.attendance}` : ''}`,
   attendance_records: (row) => `Status: ${row.status ?? '\u2014'}`,
-  imma_scores: (row) => `Tonal ${row.tonal ?? '\u2014'}, Rhythm ${row.rhythm ?? '\u2014'}`,
+  imma_scores: (row) =>
+    `Tonal ${row.tonal ?? '\u2014'}${row.tonal_complete === 0 ? ' (unfinished)' : row.tonal_complete === 1 ? ' (complete)' : ''}, ` +
+    `Rhythm ${row.rhythm ?? '\u2014'}${row.rhythm_complete === 0 ? ' (unfinished)' : row.rhythm_complete === 1 ? ' (complete)' : ''}`,
   assessment_ratings: (row) => `Rating: ${row.rating ?? '\u2014'}`,
   lsa_scores: (row) =>
     `Easy ${row.easy ?? '\u2014'}, Medium ${row.medium ?? '\u2014'}, Difficult ${row.difficult ?? '\u2014'}`,
@@ -8344,6 +8695,12 @@ function goToCsvStep(step, skipRender) {
 }
 
 function handleCsvFileSelect(file) {
+  if (!document.getElementById('csv-school').value) {
+    csvFileNameDisplay.textContent = 'Select or add a destination school first.';
+    csvStep1Next.disabled = true;
+    csvFileInput.value = '';
+    return;
+  }
   const reader = new FileReader();
   reader.onload = (e) => {
     const text = e.target.result;
@@ -8562,6 +8919,11 @@ async function executeCsvImport() {
     return;
   }
   if (csvImporting) return;
+  const schoolId = Number(document.getElementById('csv-school').value);
+  if (!schoolId) {
+    showCsvImportResult('Select a destination school before importing.', false);
+    return;
+  }
   saveCsvMapping();
 
   // Hard block: never allow syncing to a year that doesn't match the calendar year.
@@ -8597,20 +8959,23 @@ async function executeCsvImport() {
   csvStep3Import.textContent = 'Checking for matches…';
   let flagged = [];
   try {
-    flagged = await window.api.previewCsvSync(csvStudents);
+    flagged = await window.api.previewCsvSync(csvStudents, schoolId);
   } catch (err) {
     console.error('[csv-import] preview failed:', err);
-    flagged = [];
+    csvStep3Import.textContent = 'Sync Students';
+    csvStep3Import.disabled = false;
+    showCsvImportResult('Could not check student matches. Import was not started.', false);
+    return;
   }
   csvStep3Import.textContent = 'Sync Students';
   csvStep3Import.disabled = false;
 
   if (flagged.length === 0) {
-    await finishCsvImport(csvStudents, syncYear, teacherColumnMapped, {}, skipped);
+    await finishCsvImport(csvStudents, syncYear, teacherColumnMapped, {}, skipped, schoolId);
     return;
   }
 
-  pendingCsvImport = { csvStudents, syncYear, teacherColumnMapped, skipped };
+  pendingCsvImport = { csvStudents, syncYear, teacherColumnMapped, skipped, schoolId };
   renderCsvResolveList(flagged);
   document.getElementById('csv-step-panel-3').classList.add('hidden');
   csvResolvePanel.classList.remove('hidden');
@@ -8622,7 +8987,12 @@ function renderCsvResolveList(flaggedRows) {
     const row = document.createElement('div');
     row.className = 'csv-resolve-row';
 
-    const tagLabel = item.matchType === 'ambiguous' ? 'Duplicate name' : 'Possible match';
+    const tagLabel =
+      item.matchType === 'ambiguous'
+        ? 'Multiple matches'
+        : item.matchType === 'cross_school'
+          ? 'Student at another school'
+          : 'Possible match';
     const info = document.createElement('div');
     info.className = 'csv-resolve-row-info';
     info.innerHTML = `<strong>${escHtml(item.row.first_name || '')} ${escHtml(item.row.last_name || '')}</strong> — Grade ${escHtml(item.row.grade || '—')} — ${escHtml(item.row.teacher || 'No teacher')}<span class="csv-resolve-row-tag ${item.matchType}">${tagLabel}</span>`;
@@ -8640,14 +9010,17 @@ function renderCsvResolveList(flaggedRows) {
       const opt = document.createElement('option');
       opt.value = String(c.id);
       const status = c.graduatedYear ? 'Graduated' : c.isActive ? 'Active' : 'Inactive';
-      opt.textContent = `Merge into: ${c.firstName} ${c.lastName} — Grade ${c.grade || '—'} — ${c.teacher || 'No teacher'} (${status})`;
+      opt.textContent = `Merge into: ${c.firstName} ${c.lastName} — Grade ${c.grade || '—'} — ${c.teacher || 'No teacher'} — ${c.schoolName || 'Unassigned'} (${status})`;
       select.appendChild(opt);
     });
     // A single close-spelling suggestion is pre-selected; ambiguous ties (same
     // exact name, multiple candidates) default to "Add as new" to force a
     // deliberate choice rather than guessing which one to merge into.
     select.value =
-      item.matchType === 'near_miss' && item.candidates.length === 1
+      item.matchType === 'near_miss' &&
+      item.candidates.length === 1 &&
+      (item.candidates[0].schoolId == null ||
+        item.candidates[0].schoolId === pendingCsvImport.schoolId)
         ? String(item.candidates[0].id)
         : 'new';
 
@@ -8663,14 +9036,28 @@ async function continueCsvImportAfterResolve() {
   csvResolveList.querySelectorAll('.csv-resolve-select').forEach((select) => {
     manualMatches[select.dataset.rowIndex] = select.value;
   });
-  const { csvStudents, syncYear, teacherColumnMapped, skipped } = pendingCsvImport;
+  const { csvStudents, syncYear, teacherColumnMapped, skipped, schoolId } = pendingCsvImport;
   pendingCsvImport = null;
   csvResolvePanel.classList.add('hidden');
   document.getElementById('csv-step-panel-3').classList.remove('hidden');
-  await finishCsvImport(csvStudents, syncYear, teacherColumnMapped, manualMatches, skipped);
+  await finishCsvImport(
+    csvStudents,
+    syncYear,
+    teacherColumnMapped,
+    manualMatches,
+    skipped,
+    schoolId
+  );
 }
 
-async function finishCsvImport(csvStudents, syncYear, teacherColumnMapped, manualMatches, skipped) {
+async function finishCsvImport(
+  csvStudents,
+  syncYear,
+  teacherColumnMapped,
+  manualMatches,
+  skipped,
+  schoolId
+) {
   csvImporting = true;
   csvStep3Import.disabled = true;
   csvStep3Import.textContent = 'Importing…';
@@ -8682,7 +9069,8 @@ async function finishCsvImport(csvStudents, syncYear, teacherColumnMapped, manua
       csvStudents,
       syncYear,
       teacherColumnMapped,
-      manualMatches
+      manualMatches,
+      schoolId
     );
   } catch (err) {
     console.error('[csv-import] sync failed:', err);
@@ -8690,7 +9078,7 @@ async function finishCsvImport(csvStudents, syncYear, teacherColumnMapped, manua
     csvStep3Back.disabled = false;
     csvStep3Import.disabled = false;
     csvStep3Import.textContent = 'Import Students';
-    showCsvImportResult('Import failed. Please try again.', false);
+    showCsvImportResult(`Import failed: ${err.message}`, false);
     return;
   }
 
@@ -8701,26 +9089,22 @@ async function finishCsvImport(csvStudents, syncYear, teacherColumnMapped, manua
   try {
     students = await window.api.getStudents();
     usingSampleRoster = false;
-    await loadLsaScoresForScope(true);
-    await loadRecorderSongLibrary();
-    await loadRecorderSongDataForScope(true);
-    renderWorkspace();
+    await switchSchool(schoolId);
   } catch (err) {
     console.error('[csv-import] failed to reload students:', err);
   }
 
-  // Wipe any prior-year seating chart data so a reused (or retired) teacher/
-  // grade combo never mixes old and new roster placements. Not scoped to
-  // classes present in this CSV — a class whose entire roster moved away
-  // still needs its stale chart cleared.
+  // Clear stale charts only in the school being imported.
   let clearResult = { clearedClasses: 0 };
+  let postImportWarning = '';
   try {
-    clearResult = await window.api.clearStaleSeatingChartsForYear(syncYear);
+    clearResult = await window.api.clearStaleSeatingChartsForYear(syncYear, schoolId);
     if (clearResult.clearedClasses > 0) {
       await refreshSeatingChartsList(true);
     }
   } catch (err) {
     console.error('[csv-import] failed to clear stale seating charts:', err);
+    postImportWarning = ' The import succeeded, but old seating charts could not be cleared.';
   }
 
   const {
@@ -8741,7 +9125,8 @@ async function finishCsvImport(csvStudents, syncYear, teacherColumnMapped, manua
   if (skipped > 0) parts.push(`${skipped} skipped (missing name)`);
   if (clearResult.clearedClasses > 0)
     parts.push(`${clearResult.clearedClasses} class seating chart(s) reset for the new year`);
-  const message = parts.length > 0 ? parts.join(', ') + '.' : 'No changes made.';
+  const message =
+    (parts.length > 0 ? parts.join(', ') + '.' : 'No changes made.') + postImportWarning;
 
   showCsvImportResult(message, true);
   csvStep3Import.textContent = 'Done';
@@ -8755,7 +9140,7 @@ function showCsvImportResult(message, isSuccess) {
 }
 
 function getCurrentChartSnapshot() {
-  return students
+  return getStudentsInActiveScope()
     .filter((student) => !student.isSample)
     .map((student, index) => {
       const layout = getStudentLayout(student.id) || createDefaultLayout(index);
@@ -8854,7 +9239,7 @@ async function persistActiveSeatingChart() {
     return;
   }
 
-  const realStudents = students.filter((student) => !student.isSample);
+  const realStudents = getStudentsInActiveScope().filter((student) => !student.isSample);
   if (realStudents.length === 0) {
     return;
   }
@@ -8894,6 +9279,7 @@ async function persistActiveSeatingChart() {
 }
 
 async function selectSeatingChart(chartId) {
+  if (activeSeatingChartId !== chartId) lastActionSnapshot = null;
   chartPanX = 0;
   chartPanY = 0;
   chartZoom = 1;
@@ -9035,6 +9421,7 @@ async function selectClassTeacher(teacherKey) {
     teacherKey === null ? null : activeClassTeacher === teacherKey ? null : teacherKey;
   console.log('[selectClassTeacher] teacherKey:', teacherKey, 'nextTeacher:', nextTeacher);
   activeClassTeacher = nextTeacher;
+  lastActionSnapshot = null;
   activeSeatingChartId = null;
   chartPanX = 0;
   chartPanY = 0;
@@ -9710,7 +10097,10 @@ async function handleRosterDrop(studentId) {
 }
 
 async function clearChart() {
-  const placedCount = students.filter((student) => getStudentLayout(student.id).placed).length;
+  const scopedStudents = getStudentsInActiveScope();
+  const placedCount = scopedStudents.filter(
+    (student) => getStudentLayout(student.id).placed
+  ).length;
   if (placedCount === 0) {
     alert('There are no placed students to clear.');
     return;
@@ -9725,8 +10115,8 @@ async function clearChart() {
 
   captureUndoSnapshot('clear');
 
-  layoutState.forEach((layout) => {
-    layout.placed = false;
+  scopedStudents.forEach((student) => {
+    getStudentLayout(student.id).placed = false;
   });
 
   selectedStudentId = null;
@@ -9740,7 +10130,9 @@ async function undoClearChart() {
     return;
   }
 
-  const hasCurrentPlacedStudents = students.some((student) => getStudentLayout(student.id).placed);
+  const hasCurrentPlacedStudents = getStudentsInActiveScope().some(
+    (student) => getStudentLayout(student.id).placed
+  );
   if (hasCurrentPlacedStudents) {
     let confirmMsg = 'Undo will replace current seating positions. Continue?';
     if (lastActionSnapshot.type === 'clear') {
@@ -10562,6 +10954,11 @@ function openStudentModal(id) {
   document.getElementById('student-number').value = student ? student.student_number || '' : '';
   document.getElementById('student-grade').value = student ? student.grade || '' : '';
   document.getElementById('student-teacher').value = student ? student.teacher || '' : '';
+  populateSchoolSelect(
+    document.getElementById('student-school'),
+    student ? student.school_id : currentSchoolContextId,
+    true
+  );
   document.getElementById('student-notes').value = student ? student.notes || '' : '';
   document.getElementById('student-is-active').checked = student ? student.is_active !== 0 : true;
   studentModal.classList.remove('hidden');
@@ -10622,8 +11019,6 @@ window.api.onDisplayScaleChanged(() => {
   requestAnimationFrame(() => requestAnimationFrame(initCanvasSize));
 });
 
-initializeWorkspace();
-
 // ─────────────────────────────────────────────────────────────────────────────
 // PRINT FEATURE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -10636,6 +11031,8 @@ let previewRefreshTimer = null;
 function getPrintClassName() {
   if (usingSampleRoster) return 'Sample Roster';
   if (activeClassTeacher === null) return 'All Classes';
+  if (activeClassTeacher === UNASSIGNED_CLASS_KEY) return 'Unassigned Students';
+  if (activeClassTeacher === GRADUATED_CLASS_KEY) return 'Graduated Students';
   const { teacher, grade } = parseClassKey(activeClassTeacher);
   const name = getTeacherLabel(teacher);
   return grade ? `${name} (${grade})` : name;

@@ -121,7 +121,7 @@ let db;
 // corresponding migration_N function below.  New installs jump straight
 // to this version; existing databases run only the migrations they are
 // missing.
-const SCHEMA_VERSION = 20;
+const SCHEMA_VERSION = 22;
 
 function init(dbPath) {
   db = new Database(dbPath);
@@ -173,6 +173,8 @@ function runMigrations() {
   if (version < 18) migration_18_pruneOrphanedSeatingPlacements();
   if (version < 19) migration_19_recorderSongTracker();
   if (version < 20) migration_20_repairFreshInstallSortOrder();
+  if (version < 21) migration_21_immaCompletionStatus();
+  if (version < 22) migration_22_schools();
 
   db.pragma(`user_version = ${SCHEMA_VERSION}`);
 }
@@ -183,6 +185,14 @@ function runMigrations() {
 
 function createBaseTables() {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS schools (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL COLLATE NOCASE UNIQUE,
+      is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+    INSERT OR IGNORE INTO schools (id, name) VALUES (1, 'Default School');
+
     CREATE TABLE IF NOT EXISTS students (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       first_name TEXT NOT NULL,
@@ -202,7 +212,8 @@ function createBaseTables() {
       color_dot TEXT,
       imma_t REAL,
       imma_r REAL,
-      graduated_year TEXT
+      graduated_year TEXT,
+      school_id INTEGER REFERENCES schools(id)
     );
 
     CREATE TABLE IF NOT EXISTS instruments (
@@ -220,7 +231,8 @@ function createBaseTables() {
       grade TEXT,
       teacher TEXT,
       schedule TEXT,
-      notes TEXT
+      notes TEXT,
+      school_id INTEGER REFERENCES schools(id)
     );
 
     CREATE TABLE IF NOT EXISTS seating_charts (
@@ -361,6 +373,8 @@ function createBaseTables() {
       academic_year TEXT NOT NULL,
       tonal INTEGER,
       rhythm INTEGER,
+      tonal_complete INTEGER CHECK (tonal_complete IN (0, 1)),
+      rhythm_complete INTEGER CHECK (rhythm_complete IN (0, 1)),
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (student_id, academic_year)
     );
@@ -919,6 +933,140 @@ function migration_19_recorderSongTracker() {
   `);
 }
 
+function migration_21_immaCompletionStatus() {
+  const cols = db
+    .prepare('PRAGMA table_info(imma_scores)')
+    .all()
+    .map((col) => col.name);
+  if (!cols.includes('tonal_complete')) {
+    db.exec(
+      'ALTER TABLE imma_scores ADD COLUMN tonal_complete INTEGER CHECK (tonal_complete IN (0, 1))'
+    );
+  }
+  if (!cols.includes('rhythm_complete')) {
+    db.exec(
+      'ALTER TABLE imma_scores ADD COLUMN rhythm_complete INTEGER CHECK (rhythm_complete IN (0, 1))'
+    );
+  }
+}
+
+function migration_22_schools() {
+  db.transaction(() => {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS schools (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL COLLATE NOCASE UNIQUE,
+        is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+      INSERT OR IGNORE INTO schools (id, name) VALUES (1, 'Default School');
+    `);
+    for (const table of ['students', 'classes']) {
+      const cols = db
+        .prepare(`PRAGMA table_info(${table})`)
+        .all()
+        .map((col) => col.name);
+      if (!cols.includes('school_id')) {
+        db.exec(`ALTER TABLE ${table} ADD COLUMN school_id INTEGER REFERENCES schools(id)`);
+      }
+      db.exec(`UPDATE ${table} SET school_id = 1 WHERE school_id IS NULL`);
+    }
+    for (const table of [
+      'seating_charts',
+      'lsa_unit_placeholders',
+      'lsa_unit_assets',
+      'lsa_unit_labels_history',
+      'assessment_dates_year',
+    ]) {
+      db.exec(`UPDATE ${table} SET class_key = 'school:1::' || class_key
+        WHERE class_key != '' AND class_key != '__GRADUATED__'`);
+    }
+    for (const table of ['lsa_unit_placeholders', 'lsa_unit_assets', 'lsa_unit_labels_history']) {
+      db.exec(`UPDATE ${table} SET class_key = 'school:1::__ALL__' WHERE class_key = ''`);
+    }
+    db.pragma('user_version = 22');
+  })();
+}
+
+function getSchools() {
+  return db.prepare('SELECT * FROM schools ORDER BY name COLLATE NOCASE').all();
+}
+
+function addSchool(name) {
+  const trimmed = typeof name === 'string' ? name.trim() : '';
+  if (!trimmed) throw new Error('School name is required.');
+  const result = db.prepare('INSERT INTO schools (name) VALUES (?)').run(trimmed);
+  return db.prepare('SELECT * FROM schools WHERE id = ?').get(result.lastInsertRowid);
+}
+
+function renameSchool(id, name) {
+  const trimmed = typeof name === 'string' ? name.trim() : '';
+  if (!trimmed) throw new Error('School name is required.');
+  if (!db.prepare('UPDATE schools SET name = ? WHERE id = ?').run(trimmed, Number(id)).changes) {
+    throw new Error('School not found.');
+  }
+}
+
+function requireActiveSchool(id) {
+  const school = db.prepare('SELECT * FROM schools WHERE id = ?').get(Number(id));
+  if (!school || !school.is_active) throw new Error('Select an active school.');
+  return school;
+}
+
+function archiveTeacher(schoolId, teacher) {
+  requireActiveSchool(schoolId);
+  const name = typeof teacher === 'string' ? teacher.trim() : '';
+  if (!name) throw new Error('Teacher name is required.');
+  return db
+    .prepare(
+      'UPDATE students SET school_id = NULL, teacher = NULL WHERE school_id = ? AND trim(teacher) = ? COLLATE NOCASE AND graduated_year IS NULL'
+    )
+    .run(Number(schoolId), name).changes;
+}
+
+function updateSchoolStatus(id, isActive) {
+  const schoolId = Number(id);
+  if (isActive !== true && isActive !== false) throw new Error('Invalid school status.');
+  return db.transaction(() => {
+    const result = db
+      .prepare('UPDATE schools SET is_active = ? WHERE id = ?')
+      .run(Number(isActive), schoolId);
+    if (!result.changes) throw new Error('School not found.');
+    if (!isActive) {
+      db.prepare(
+        'UPDATE students SET school_id = NULL, teacher = NULL WHERE school_id = ? AND graduated_year IS NULL'
+      ).run(schoolId);
+    }
+  })();
+}
+
+function deleteSchool(id) {
+  const schoolId = Number(id);
+  if (schoolId === 1) throw new Error('The default school cannot be deleted.');
+  const inUse = db
+    .prepare(
+      'SELECT 1 FROM students WHERE school_id = ? UNION ALL SELECT 1 FROM classes WHERE school_id = ? LIMIT 1'
+    )
+    .get(schoolId, schoolId);
+  const prefix = `school:${schoolId}::`;
+  const hasHistory = [
+    'seating_charts',
+    'lsa_unit_placeholders',
+    'lsa_unit_assets',
+    'lsa_unit_labels_history',
+    'assessment_dates_year',
+  ].some((table) =>
+    db
+      .prepare(`SELECT 1 FROM ${table} WHERE substr(class_key, 1, ?) = ? LIMIT 1`)
+      .get(prefix.length, prefix)
+  );
+  if (inUse || hasHistory)
+    throw new Error('This school contains student or class history and cannot be deleted.');
+  if (!db.prepare('DELETE FROM schools WHERE id = ?').run(schoolId).changes) {
+    throw new Error('School not found.');
+  }
+}
+
 // --- LSA Unit Label History ---
 function getLsaUnitLabelsHistory(classKey, academicYear) {
   return db
@@ -1018,7 +1166,7 @@ function getImmaScores(studentId) {
   return db
     .prepare(
       `
-    SELECT student_id, academic_year, tonal, rhythm, updated_at
+    SELECT student_id, academic_year, tonal, rhythm, tonal_complete, rhythm_complete, updated_at
     FROM imma_scores
     WHERE student_id = ?
     ORDER BY academic_year DESC
@@ -1039,7 +1187,7 @@ function getImmaScoresForClass(studentIds) {
   return db
     .prepare(
       `
-    SELECT student_id, academic_year, tonal, rhythm, updated_at
+    SELECT student_id, academic_year, tonal, rhythm, tonal_complete, rhythm_complete, updated_at
     FROM imma_scores
     WHERE student_id IN (${placeholders})
     ORDER BY student_id ASC, academic_year DESC
@@ -1062,14 +1210,57 @@ function upsertImmaScore(studentId, academicYear, tonal, rhythm) {
     INSERT INTO imma_scores (student_id, academic_year, tonal, rhythm, updated_at)
     VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
     ON CONFLICT(student_id, academic_year)
-    DO UPDATE SET tonal = excluded.tonal, rhythm = excluded.rhythm, updated_at = CURRENT_TIMESTAMP
+    DO UPDATE SET
+      tonal_complete = CASE WHEN imma_scores.tonal IS excluded.tonal THEN imma_scores.tonal_complete ELSE NULL END,
+      rhythm_complete = CASE WHEN imma_scores.rhythm IS excluded.rhythm THEN imma_scores.rhythm_complete ELSE NULL END,
+      tonal = excluded.tonal, rhythm = excluded.rhythm, updated_at = CURRENT_TIMESTAMP
   `
   ).run(Number(studentId), academicYear, t, r);
   return db
     .prepare(
-      'SELECT student_id, academic_year, tonal, rhythm, updated_at FROM imma_scores WHERE student_id = ? AND academic_year = ?'
+      'SELECT student_id, academic_year, tonal, rhythm, tonal_complete, rhythm_complete, updated_at FROM imma_scores WHERE student_id = ? AND academic_year = ?'
     )
     .get(Number(studentId), academicYear);
+}
+
+function importMatsScores(academicYear, results) {
+  if (!academicYear || !Array.isArray(results)) {
+    throw new Error('An academic year and MATS results are required.');
+  }
+  const statements = {};
+  for (const type of ['tonal', 'rhythm']) {
+    statements[type] = db.prepare(`
+      INSERT INTO imma_scores (student_id, academic_year, ${type}, ${type}_complete, updated_at)
+      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(student_id, academic_year) DO UPDATE SET
+        ${type} = excluded.${type},
+        ${type}_complete = excluded.${type}_complete,
+        updated_at = CURRENT_TIMESTAMP
+    `);
+  }
+  db.transaction(() => {
+    for (const result of results) {
+      if (result.student_id == null) continue;
+      const studentId = Number(result.student_id);
+      if (!Number.isInteger(studentId) || studentId <= 0) {
+        throw new Error('Invalid student ID in MATS results.');
+      }
+      const type = result.test_type === 'rhythm' ? 'rhythm' : 'tonal';
+      const score = result.score == null ? null : Number(result.score);
+      if (score !== null && (!Number.isInteger(score) || score < 0 || score > 40)) {
+        throw new Error('Invalid score in MATS results.');
+      }
+      if (typeof result.is_complete !== 'boolean') {
+        throw new Error('Invalid completion status in MATS results.');
+      }
+      statements[type].run(
+        studentId,
+        academicYear,
+        score,
+        score === null ? null : Number(result.is_complete)
+      );
+    }
+  })();
 }
 
 // --- Students ---
@@ -1078,8 +1269,9 @@ function getStudents() {
 }
 
 function addStudent(student) {
+  if (student.school_id != null) requireActiveSchool(student.school_id);
   const stmt = db.prepare(
-    'INSERT INTO students (first_name, last_name, email, grade, teacher, notes, lsa_easy, lsa_medium, lsa_difficult, lsa_units, recorder_color, good_news_shared, is_active, student_number, color_dot) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO students (first_name, last_name, email, grade, teacher, notes, lsa_easy, lsa_medium, lsa_difficult, lsa_units, recorder_color, good_news_shared, is_active, student_number, color_dot, school_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   );
   const result = stmt.run(
     student.first_name,
@@ -1096,7 +1288,8 @@ function addStudent(student) {
     student.good_news_shared ? 1 : 0,
     student.is_active === 0 ? 0 : 1,
     student.student_number || null,
-    student.color_dot || null
+    student.color_dot || null,
+    student.school_id ?? null
   );
   return { id: result.lastInsertRowid, ...student };
 }
@@ -1106,13 +1299,22 @@ function addStudent(student) {
 // placements so they never linger in a class the student is no longer part of.
 function classIdentityChanged(before, after) {
   const norm = (v) => (v === null || v === undefined ? '' : String(v).trim().toLowerCase());
-  return norm(before.teacher) !== norm(after.teacher) || norm(before.grade) !== norm(after.grade);
+  return (
+    norm(before.teacher) !== norm(after.teacher) ||
+    norm(before.grade) !== norm(after.grade) ||
+    norm(before.school_id) !== norm(after.school_id)
+  );
 }
 
 function updateStudent(student) {
-  const previous = db.prepare('SELECT teacher, grade FROM students WHERE id=?').get(student.id);
+  const previous = db
+    .prepare('SELECT teacher, grade, school_id, is_active FROM students WHERE id=?')
+    .get(student.id);
+  if (!previous) throw new Error('Student not found.');
+  const schoolId = student.school_id === undefined ? previous.school_id : student.school_id;
+  if (schoolId != null && Number(schoolId) !== previous.school_id) requireActiveSchool(schoolId);
   db.prepare(
-    'UPDATE students SET first_name=?, last_name=?, email=?, grade=?, teacher=?, notes=?, lsa_easy=?, lsa_medium=?, lsa_difficult=?, lsa_units=?, recorder_color=?, good_news_shared=?, is_active=?, student_number=?, color_dot=? WHERE id=?'
+    'UPDATE students SET first_name=?, last_name=?, email=?, grade=?, teacher=?, notes=?, lsa_easy=?, lsa_medium=?, lsa_difficult=?, lsa_units=?, recorder_color=?, good_news_shared=?, is_active=?, student_number=?, color_dot=?, school_id=? WHERE id=?'
   ).run(
     student.first_name,
     student.last_name,
@@ -1126,14 +1328,15 @@ function updateStudent(student) {
     student.lsa_units || null,
     student.recorder_color || null,
     student.good_news_shared ? 1 : 0,
-    student.is_active === 0 ? 0 : 1,
+    student.is_active === undefined ? previous.is_active : student.is_active === 0 ? 0 : 1,
     student.student_number || null,
     student.color_dot || null,
+    schoolId,
     student.id
   );
   // Student changed teacher/grade — drop stale placements so they don't stay
   // stuck on their former class's seating chart(s).
-  if (previous && classIdentityChanged(previous, student)) {
+  if (classIdentityChanged(previous, { ...student, school_id: schoolId })) {
     db.prepare('DELETE FROM seating_chart_items WHERE student_id=?').run(student.id);
   }
   return student;
@@ -1168,6 +1371,7 @@ const MERGE_PROFILE_FIELDS = [
   'imma_t',
   'imma_r',
   'graduated_year',
+  'school_id',
 ];
 
 // Tables keyed by (student_id, ...more) — a merge can collide if both students
@@ -1189,7 +1393,7 @@ const MERGE_TABLE_CONFIGS = [
   {
     table: 'imma_scores',
     keyCols: ['academic_year'],
-    dataCols: ['tonal', 'rhythm'],
+    dataCols: ['tonal', 'rhythm', 'tonal_complete', 'rhythm_complete'],
     label: (row) => `IMMA score ${row.academic_year}`,
   },
   {
@@ -1490,6 +1694,11 @@ function resetFactoryData() {
     db.prepare('DELETE FROM seating_charts').run();
     db.prepare('DELETE FROM students').run();
     db.prepare('DELETE FROM classes').run();
+    db.prepare('DELETE FROM schools WHERE id != 1').run();
+    db.prepare("UPDATE schools SET name = 'Default School', is_active = 1 WHERE id = 1").run();
+    db.prepare(
+      "DELETE FROM settings WHERE key = 'class_order' OR key LIKE 'class_order_school_%'"
+    ).run();
     db.prepare('DELETE FROM instruments').run();
     db.prepare('DELETE FROM lsa_unit_placeholders').run();
     db.prepare('DELETE FROM lsa_unit_assets').run();
@@ -1787,15 +1996,24 @@ function updateSeatingChartName(chartId, name, classKey = '') {
 }
 
 function saveSeatingChartLayout(payload) {
-  const deleteItems = db.prepare('DELETE FROM seating_chart_items WHERE chart_id=?');
+  const deleteItem = db.prepare(
+    'DELETE FROM seating_chart_items WHERE chart_id=? AND student_id=?'
+  );
   const insertItem = db.prepare(`
     INSERT INTO seating_chart_items (chart_id, student_id, placed, x, y, state, attendance, assessment_rating, color_dot)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const transaction = db.transaction(({ chartId, classKey = '', arrangement, items = [] }) => {
-    deleteItems.run(chartId);
+    if (
+      !db
+        .prepare('SELECT 1 FROM seating_charts WHERE id = ? AND class_key = ?')
+        .get(chartId, classKey)
+    ) {
+      throw new Error('Seating chart not found in the selected class.');
+    }
     items.forEach((item) => {
+      deleteItem.run(chartId, item.student_id);
       insertItem.run(
         chartId,
         item.student_id,
@@ -1835,22 +2053,17 @@ function deleteSeatingChart(chartId, classKey = '') {
   return { id: chartId };
 }
 
-// Wipes all seating chart data left over from a prior academic year (called
-// once per new-year CSV import), so a class never mixes old and new roster
-// placements. Not scoped to classes present in the import — a class whose
-// entire prior roster moved away (retired teacher, grade reassignment, etc.)
-// would otherwise never appear in scope and its stale chart would linger
-// forever. Charts already stamped with the current year are left untouched.
-function clearStaleSeatingChartsForYear(academicYear) {
-  if (!academicYear) {
-    return { clearedClasses: 0, clearedCharts: 0 };
-  }
+// A CSV import may only clear prior-year charts in its destination school.
+function clearStaleSeatingChartsForYear(academicYear, schoolId) {
+  if (!academicYear) throw new Error('Academic year is required.');
+  requireActiveSchool(schoolId);
+  const prefix = `school:${Number(schoolId)}::`;
 
   const stale = db
     .prepare(
-      'SELECT id, class_key FROM seating_charts WHERE academic_year IS NULL OR academic_year != ?'
+      'SELECT id, class_key FROM seating_charts WHERE (academic_year IS NULL OR academic_year != ?) AND substr(class_key, 1, ?) = ?'
     )
-    .all(academicYear);
+    .all(academicYear, prefix.length, prefix);
 
   if (stale.length === 0) {
     return { clearedClasses: 0, clearedCharts: 0 };
@@ -1914,28 +2127,30 @@ function getClasses() {
 }
 
 function addClass(cls) {
+  const schoolId = cls.school_id ?? 1;
+  requireActiveSchool(schoolId);
   const stmt = db.prepare(
-    'INSERT INTO classes (name, grade, teacher, schedule, notes) VALUES (?, ?, ?, ?, ?)'
+    'INSERT INTO classes (name, grade, teacher, schedule, notes, school_id) VALUES (?, ?, ?, ?, ?, ?)'
   );
   const result = stmt.run(
     cls.name,
     cls.grade || null,
     cls.teacher || null,
     cls.schedule || null,
-    cls.notes || null
+    cls.notes || null,
+    schoolId
   );
-  return { id: result.lastInsertRowid, ...cls };
+  return { id: result.lastInsertRowid, ...cls, school_id: schoolId };
 }
 
 function updateClass(cls) {
-  db.prepare('UPDATE classes SET name=?, grade=?, teacher=?, schedule=?, notes=? WHERE id=?').run(
-    cls.name,
-    cls.grade,
-    cls.teacher,
-    cls.schedule,
-    cls.notes,
-    cls.id
-  );
+  const previous = db.prepare('SELECT school_id FROM classes WHERE id = ?').get(cls.id);
+  if (!previous) throw new Error('Class not found.');
+  const schoolId = cls.school_id === undefined ? previous.school_id : cls.school_id;
+  if (schoolId != null && Number(schoolId) !== previous.school_id) requireActiveSchool(schoolId);
+  db.prepare(
+    'UPDATE classes SET name=?, grade=?, teacher=?, schedule=?, notes=?, school_id=? WHERE id=?'
+  ).run(cls.name, cls.grade, cls.teacher, cls.schedule, cls.notes, schoolId, cls.id);
   return cls;
 }
 
@@ -2011,39 +2226,59 @@ function describeStudentCandidate(s) {
     teacher: s.teacher,
     isActive: s.is_active !== 0,
     graduatedYear: s.graduated_year || null,
+    schoolId: s.school_id,
+    schoolName: s.school_name || null,
   };
+}
+
+function csvStudentCandidates(csvStudents) {
+  const allDbStudents = db
+    .prepare(
+      'SELECT students.*, schools.name AS school_name FROM students LEFT JOIN schools ON schools.id = students.school_id'
+    )
+    .all();
+  const indexes = { number: new Map(), email: new Map(), name: new Map() };
+  const add = (map, key, student) => {
+    if (!key) return;
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(student);
+  };
+  for (const student of allDbStudents) {
+    add(indexes.number, (student.student_number || '').trim(), student);
+    add(indexes.email, (student.email || '').trim().toLowerCase(), student);
+    add(
+      indexes.name,
+      `${(student.first_name || '').trim().toLowerCase()}|${(student.last_name || '').trim().toLowerCase()}`,
+      student
+    );
+  }
+  const matches = csvStudents.map((row) => {
+    const number = (row.student_number || '').trim();
+    const email = (row.email || '').trim().toLowerCase();
+    const name = `${(row.first_name || '').trim().toLowerCase()}|${(row.last_name || '').trim().toLowerCase()}`;
+    return (
+      (number && indexes.number.get(number)) ||
+      (email && indexes.email.get(email)) ||
+      indexes.name.get(name) ||
+      []
+    );
+  });
+  return { allDbStudents, matches };
 }
 
 // Read-only scan of a parsed CSV against the current roster, returning rows
 // whose only path to a match is name-based and ambiguous (two+ DB students
 // share that exact name) or a likely typo (no exact match, but a close one
 // exists) — for the user to resolve manually before syncStudentsFromCsv runs.
-function previewCsvSync(csvStudents) {
-  const allDbStudents = db.prepare('SELECT * FROM students').all();
-  const byNumber = new Map();
-  const byEmail = new Map();
-  const byNameList = new Map();
-  allDbStudents.forEach((s) => {
-    if (s.student_number) byNumber.set(s.student_number.trim(), s);
-    if (s.email) byEmail.set(s.email.trim().toLowerCase(), s);
-    const nameKey = `${(s.first_name || '').trim().toLowerCase()}|${(s.last_name || '').trim().toLowerCase()}`;
-    if (!byNameList.has(nameKey)) byNameList.set(nameKey, []);
-    byNameList.get(nameKey).push(s);
-  });
-
+function previewCsvSync(csvStudents, schoolId) {
+  requireActiveSchool(schoolId);
+  const { allDbStudents, matches } = csvStudentCandidates(csvStudents);
   const flagged = [];
   csvStudents.forEach((r, rowIndex) => {
-    const num = (r.student_number || '').trim();
-    const email = (r.email || '').trim().toLowerCase();
-    if (num && byNumber.has(num)) return;
-    if (email && byEmail.has(email)) return;
-
     const first = (r.first_name || '').trim();
     const last = (r.last_name || '').trim();
     if (!first || !last) return;
-
-    const nameKey = `${first.toLowerCase()}|${last.toLowerCase()}`;
-    const exactMatches = byNameList.get(nameKey) || [];
+    const exactMatches = matches[rowIndex];
     if (exactMatches.length > 1) {
       flagged.push({
         rowIndex,
@@ -2053,7 +2288,17 @@ function previewCsvSync(csvStudents) {
       });
       return;
     }
-    if (exactMatches.length === 1) return;
+    if (exactMatches.length === 1) {
+      if (exactMatches[0].school_id != null && exactMatches[0].school_id !== Number(schoolId)) {
+        flagged.push({
+          rowIndex,
+          row: r,
+          matchType: 'cross_school',
+          candidates: exactMatches.map(describeStudentCandidate),
+        });
+      }
+      return;
+    }
 
     const fullName = `${first.toLowerCase()} ${last.toLowerCase()}`;
     const nearMiss = allDbStudents.filter((s) => {
@@ -2084,20 +2329,29 @@ function syncStudentsFromCsv(
   csvStudents,
   academicYear,
   teacherColumnMapped = false,
-  manualMatches = {}
+  manualMatches = {},
+  schoolId
 ) {
-  const allDbStudents = db.prepare('SELECT * FROM students').all();
+  requireActiveSchool(schoolId);
+  for (const field of ['student_number', 'email']) {
+    const seen = new Set();
+    for (const row of csvStudents) {
+      const value = String(row[field] || '')
+        .trim()
+        .toLowerCase();
+      if (value && seen.has(value))
+        throw new Error(
+          `The CSV contains a duplicate ${field === 'email' ? 'email' : 'student number'}.`
+        );
+      if (value) seen.add(value);
+    }
+  }
+  const destinationSchool = Number(schoolId);
+  const { allDbStudents, matches } = csvStudentCandidates(csvStudents);
 
   // Index DB students for fast lookup
-  const byNumber = new Map();
-  const byEmail = new Map();
-  const byName = new Map();
   const byId = new Map();
   allDbStudents.forEach((s) => {
-    if (s.student_number) byNumber.set(s.student_number.trim(), s);
-    if (s.email) byEmail.set(s.email.trim().toLowerCase(), s);
-    const nameKey = `${(s.first_name || '').trim().toLowerCase()}|${(s.last_name || '').trim().toLowerCase()}`;
-    if (!byName.has(nameKey)) byName.set(nameKey, s);
     byId.set(s.id, s);
   });
 
@@ -2112,6 +2366,7 @@ function syncStudentsFromCsv(
   // IDs of students in the CSV scope in DB (will be deactivated if not in CSV)
   const scopedDbIds = new Set();
   allDbStudents.forEach((s) => {
+    if (s.school_id !== destinationSchool) return;
     const teacher = (s.teacher || '').trim();
     const grade = (s.grade || '').trim();
     if (scopedClassKeys.has(`${teacher}|${grade}`)) scopedDbIds.add(s.id);
@@ -2124,17 +2379,15 @@ function syncStudentsFromCsv(
   let unGraduated = 0;
 
   const updateStmt = db.prepare(
-    'UPDATE students SET first_name=?, last_name=?, email=?, grade=?, teacher=?, student_number=?, is_active=1, good_news_shared=?, graduated_year=NULL WHERE id=?'
+    'UPDATE students SET first_name=?, last_name=?, email=?, grade=?, teacher=?, student_number=?, is_active=1, good_news_shared=?, graduated_year=NULL, school_id=? WHERE id=?'
   );
   const insertStmt = db.prepare(
-    'INSERT INTO students (first_name, last_name, email, grade, teacher, student_number, good_news_shared, is_active) VALUES (?, ?, ?, ?, ?, ?, 0, 1)'
+    'INSERT INTO students (first_name, last_name, email, grade, teacher, student_number, good_news_shared, is_active, school_id) VALUES (?, ?, ?, ?, ?, ?, 0, 1, ?)'
   );
 
   const transaction = db.transaction(() => {
     csvStudents.forEach((r, rowIndex) => {
       const num = (r.student_number || '').trim();
-      const email = (r.email || '').trim().toLowerCase();
-      const nameKey = `${(r.first_name || '').trim().toLowerCase()}|${(r.last_name || '').trim().toLowerCase()}`;
 
       let match = null;
       const manualChoice = manualMatches ? manualMatches[rowIndex] : undefined;
@@ -2142,11 +2395,17 @@ function syncStudentsFromCsv(
         match = null;
       } else if (manualChoice !== undefined && manualChoice !== null && manualChoice !== '') {
         match = byId.get(Number(manualChoice)) || null;
+        if (!match) throw new Error('Selected student no longer exists.');
       } else {
-        if (num) match = byNumber.get(num) || null;
-        if (!match && email) match = byEmail.get(email) || null;
-        if (!match) match = byName.get(nameKey) || null;
+        if (matches[rowIndex].length > 1)
+          throw new Error('Resolve ambiguous student matches before importing.');
+        match = matches[rowIndex][0] || null;
+        if (match && match.school_id != null && match.school_id !== destinationSchool) {
+          throw new Error('Confirm cross-school student matches before importing.');
+        }
       }
+      if (match && updatedIds.has(match.id))
+        throw new Error('Multiple CSV rows match the same student.');
 
       const isNewYear = academicYear && match;
       const goodNewsReset = isNewYear ? 0 : match ? match.good_news_shared : 0;
@@ -2169,16 +2428,21 @@ function syncStudentsFromCsv(
           teacherValue,
           num || match.student_number || null,
           goodNewsReset,
+          destinationSchool,
           match.id
         );
         // Student changed teacher/grade via CSV — drop stale placements so
         // they don't stay stuck on their former class's seating chart(s).
-        if (classIdentityChanged(match, { teacher: teacherValue, grade: gradeValue })) {
+        if (
+          classIdentityChanged(match, {
+            teacher: teacherValue,
+            grade: gradeValue,
+            school_id: destinationSchool,
+          })
+        ) {
           db.prepare('DELETE FROM seating_chart_items WHERE student_id=?').run(match.id);
         }
         // Update lookup maps with new data
-        if (num) byNumber.set(num, { ...match, id: match.id });
-        if (email) byEmail.set(email, { ...match, id: match.id });
         if (wasInactive) reactivated++;
         else updated++;
         updatedIds.add(match.id);
@@ -2189,7 +2453,8 @@ function syncStudentsFromCsv(
           r.email || null,
           r.grade || null,
           r.teacher || null,
-          num || null
+          num || null,
+          destinationSchool
         );
         updatedIds.add(result.lastInsertRowid);
         created++;
@@ -2819,6 +3084,12 @@ function upsertRecorderSongCompletion(studentId, academicYear, slotNum, complete
 
 module.exports = {
   init,
+  getSchools,
+  addSchool,
+  renameSchool,
+  updateSchoolStatus,
+  deleteSchool,
+  archiveTeacher,
   getStudents,
   addStudent,
   updateStudent,
@@ -2835,6 +3106,7 @@ module.exports = {
   getImmaScores,
   getImmaScoresForClass,
   upsertImmaScore,
+  importMatsScores,
   upsertMatsResult,
   getMatsResultsForClass,
   getMatsUnmatchedResults,

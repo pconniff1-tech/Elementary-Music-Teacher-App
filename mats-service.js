@@ -230,10 +230,11 @@ function scoreAnswers(answers, testType) {
 function matchStudentId(students, email, name) {
   // 1. Match by email (case-insensitive)
   if (email) {
-    const byEmail = students.find(
+    const byEmail = students.filter(
       (s) => s.email && s.email.trim().toLowerCase() === email.trim().toLowerCase()
     );
-    if (byEmail) return byEmail.id;
+    if (byEmail.length === 1) return byEmail[0].id;
+    if (byEmail.length > 1) return null;
   }
   // 2. Fallback: match by first + last name
   if (name) {
@@ -241,12 +242,12 @@ function matchStudentId(students, email, name) {
     const first = parts[0] || '';
     const last = parts.slice(1).join(' ') || '';
     if (first && last) {
-      const byName = students.find(
+      const byName = students.filter(
         (s) =>
           s.first_name.trim().toLowerCase() === first.toLowerCase() &&
           s.last_name.trim().toLowerCase() === last.toLowerCase()
       );
-      if (byName) return byName.id;
+      if (byName.length === 1) return byName[0].id;
     }
   }
   return null;

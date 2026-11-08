@@ -191,6 +191,7 @@
       .imma-toolbar {
         display: flex;
         align-items: center;
+        flex-wrap: wrap;
         gap: 8px;
         padding: 10px 14px 6px;
       }
@@ -357,6 +358,37 @@
         width: 80px;
       }
 
+      .imma-td-score.imma-unfinished {
+        position: relative;
+      }
+
+      .imma-td-score.imma-unfinished::after {
+        content: '';
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: #c62828;
+        box-shadow: 0 0 0 2px #fff;
+        pointer-events: none;
+      }
+
+      .imma-unfinished-legend {
+        color: var(--muted);
+        font-size: 0.78rem;
+        white-space: nowrap;
+      }
+
+      .imma-unfinished-legend span {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: #c62828;
+      }
+
       .imma-td-mats {
         font-weight: 600;
         color: var(--accent-strong);
@@ -459,7 +491,8 @@
       .mats-retake-btn:hover {
         background: #f5e8d0;
       }
-      .mats-divider {
+      .mats-divider,
+      .schools-divider {
         border: none;
         border-top: 1px solid #cfc5b0;
         margin: 12px 0;
@@ -692,6 +725,7 @@
       .btn-cancel:focus-visible,
       .ghost-btn:focus-visible,
       .search-input:focus-visible,
+      .school-name-input:focus-visible,
       .form-group input:focus-visible,
       .form-group textarea:focus-visible {
         outline: none;
@@ -3013,6 +3047,101 @@
         color: var(--ink);
         background: rgba(0, 0, 0, 0.06);
       }
+
+      .school-picker-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 8px;
+      }
+      .school-picker-row select {
+        min-width: 0;
+        flex: 1;
+      }
+      .school-management-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 0;
+      }
+      .school-management-row span {
+        flex: 1;
+        overflow-wrap: anywhere;
+      }
+      #schools-modal .school-name-input {
+        flex: 1 1 100px;
+        width: 0;
+        min-width: 90px;
+      }
+      #schools-list .school-name-input[readonly] {
+        cursor: pointer;
+      }
+      #schools-list .school-name-input[aria-current='true'] {
+        border-color: var(--accent-strong);
+        box-shadow: inset 0 0 0 1px var(--accent-strong);
+      }
+      .school-selection-hint {
+        margin: 0 0 8px;
+        color: var(--ink-light);
+        font-size: 0.82rem;
+      }
+      #schools-list .school-management-row {
+        flex-wrap: wrap;
+      }
+      #schools-list .ghost-btn,
+      .school-add-row .ghost-btn {
+        flex: 0 0 auto;
+        padding: 8px 10px;
+        font-size: 0.85rem;
+      }
+      .school-add-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      #school-teachers-list {
+        gap: 2px;
+      }
+      .school-teacher-row {
+        padding: 0;
+        gap: 12px;
+      }
+      .school-teacher-row span {
+        min-width: 0;
+      }
+      .teacher-inactivate-btn {
+        display: inline-flex;
+        align-items: center;
+        flex-shrink: 0;
+        gap: 8px;
+        padding: 5px 4px;
+        border: 0;
+        background: none;
+        color: var(--ink);
+        font-size: 0.95rem;
+        cursor: pointer;
+      }
+      .teacher-inactivate-btn::before {
+        content: '';
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        background-color: currentColor;
+        -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='3' width='16' height='18' rx='2'/%3E%3Cpath d='M4 12h16M10 7h4M10 16h4M7 21v1M17 21v1'/%3E%3C/svg%3E") center / contain no-repeat;
+        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='3' width='16' height='18' rx='2'/%3E%3Cpath d='M4 12h16M10 7h4M10 16h4M7 21v1M17 21v1'/%3E%3C/svg%3E") center / contain no-repeat;
+      }
+      .teacher-inactivate-btn:hover {
+        color: var(--accent-strong);
+        text-decoration: underline;
+      }
+      .teacher-inactivate-btn:focus-visible {
+        outline: 2px solid var(--accent-strong);
+        outline-offset: 2px;
+      }
+      .teacher-inactivate-btn:disabled {
+        cursor: wait;
+        opacity: 0.5;
+      }
       .multi-grade-modal {
         width: min(460px, calc(100vw - 40px));
         max-height: calc(100vh - 80px);
@@ -3748,7 +3877,8 @@
       }
 
       .form-group input,
-      .form-group textarea {
+      .form-group textarea,
+      .school-name-input {
         width: 100%;
         padding: 11px 12px;
         border-radius: 14px;
@@ -5818,6 +5948,11 @@
           <div id="global-student-search-results" class="global-student-search-results hidden"></div>
         </div>
 
+        <div class="school-picker-row">
+          <label for="school-picker">School</label>
+          <select id="school-picker" aria-label="Select school"></select>
+          <button id="manage-schools-btn" type="button" class="multi-grade-gear-btn" title="Manage schools and teachers" aria-label="Manage schools and teachers">&#9881;</button>
+        </div>
         <section id="class-library" class="chart-library hidden">
           <div class="chart-library-header">
             <button
@@ -5974,6 +6109,10 @@
           <div class="form-group">
             <label for="student-teacher">Teacher</label>
             <input type="text" id="student-teacher" placeholder="e.g. Ms. Rivera" />
+          </div>
+          <div class="form-group">
+            <label for="student-school">School</label>
+            <select id="student-school"></select>
           </div>
           <div class="form-group">
             <label for="student-notes">Notes</label>
@@ -6434,6 +6573,12 @@
         </div>
 
         <div id="csv-step-panel-1" class="csv-step-panel">
+          <div class="form-group">
+            <label for="csv-school">Destination school</label>
+            <select id="csv-school"></select>
+            <input id="csv-new-school-name" type="text" placeholder="New school name" />
+            <button id="csv-add-school" type="button" class="ghost-btn">Add school</button>
+          </div>
           <label id="csv-drop-zone" class="csv-drop-zone" for="csv-file-input">
             <svg viewBox="0 0 24 24" class="csv-drop-icon" aria-hidden="true">
               <path
@@ -6637,6 +6782,30 @@
         <div id="view-notes-list" style="flex: 1; overflow-y: auto; min-height: 0">
           <!-- Notes will be dynamically inserted here -->
         </div>
+      </div>
+    </div>
+
+    <div id="schools-modal" class="modal-overlay hidden">
+      <div class="modal multi-grade-modal">
+        <div class="multi-grade-modal-header">
+          <h3>Manage Schools and Teachers</h3>
+          <button id="schools-close" type="button" class="lesson-lib-close-btn" aria-label="Close">&#10005;</button>
+        </div>
+        <p id="school-selection-hint" class="school-selection-hint">Select a school name to view its teachers.</p>
+        <div id="schools-list" class="multi-grade-list"></div>
+        <div class="form-group">
+          <label for="school-name">Add School</label>
+          <div class="school-add-row">
+            <input id="school-name" class="school-name-input" type="text" />
+            <button id="school-add" type="button" class="ghost-btn">Add School</button>
+          </div>
+        </div>
+        <hr class="schools-divider" />
+        <h3 id="school-teachers-heading">Teachers in selected school</h3>
+        <p>Inactivating a teacher moves their students to Unassigned Students and keeps their history.</p>
+        <div id="school-teachers-list" class="multi-grade-list"></div>
+        <div id="schools-error" role="alert"></div>
+        <div class="csv-step-actions"><button id="schools-done" class="btn-primary" type="button">Done</button></div>
       </div>
     </div>
 

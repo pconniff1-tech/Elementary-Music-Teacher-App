@@ -99,8 +99,8 @@ contextBridge.exposeInMainWorld('api', {
   getSeatingChart: (chartId, classKey = '') =>
     ipcRenderer.invoke('db.getSeatingChart', chartId, classKey),
   createSeatingChart: (payload) => ipcRenderer.invoke('db.createSeatingChart', payload),
-  clearStaleSeatingChartsForYear: (academicYear) =>
-    ipcRenderer.invoke('db.clearStaleSeatingChartsForYear', academicYear),
+  clearStaleSeatingChartsForYear: (academicYear, schoolId) =>
+    ipcRenderer.invoke('db.clearStaleSeatingChartsForYear', academicYear, schoolId),
   updateSeatingChartName: (chartId, name, classKey = '') =>
     ipcRenderer.invoke('db.updateSeatingChartName', chartId, name, classKey),
   saveSeatingChartLayout: (payload) => ipcRenderer.invoke('db.saveSeatingChartLayout', payload),
@@ -236,6 +236,8 @@ contextBridge.exposeInMainWorld('api', {
   getImmaScoresForClass: (studentIds) => ipcRenderer.invoke('db.getImmaScoresForClass', studentIds),
   upsertImmaScore: (studentId, academicYear, tonal, rhythm) =>
     ipcRenderer.invoke('db.upsertImmaScore', studentId, academicYear, tonal, rhythm),
+  importMatsScores: (academicYear, results) =>
+    ipcRenderer.invoke('db.importMatsScores', academicYear, results),
   // MATS (Music Aptitude Test System)
   // SEND → 'db.getMatsResultsForClass' | 'db.getMatsUnmatchedResults'
   // SEND → 'mats.hasServiceAccount' | 'mats.setupServiceAccount' | 'mats.fetchAndImport' | 'mats.resetForRetake'
@@ -248,14 +250,22 @@ contextBridge.exposeInMainWorld('api', {
   matsFetchAndImport: (teacherCode) => ipcRenderer.invoke('mats.fetchAndImport', teacherCode),
   matsResetForRetake: (firestoreDocId) => ipcRenderer.invoke('mats.resetForRetake', firestoreDocId),
   // SEND → 'db.previewCsvSync' | 'db.syncStudentsFromCsv'
-  previewCsvSync: (csvStudents) => ipcRenderer.invoke('db.previewCsvSync', csvStudents),
-  syncStudentsFromCsv: (csvStudents, academicYear, teacherColumnMapped, manualMatches) =>
+  getSchools: () => ipcRenderer.invoke('db.getSchools'),
+  addSchool: (name) => ipcRenderer.invoke('db.addSchool', name),
+  renameSchool: (id, name) => ipcRenderer.invoke('db.renameSchool', id, name),
+  updateSchoolStatus: (id, active) => ipcRenderer.invoke('db.updateSchoolStatus', id, active),
+  deleteSchool: (id) => ipcRenderer.invoke('db.deleteSchool', id),
+  archiveTeacher: (schoolId, teacher) => ipcRenderer.invoke('db.archiveTeacher', schoolId, teacher),
+  previewCsvSync: (csvStudents, schoolId) =>
+    ipcRenderer.invoke('db.previewCsvSync', csvStudents, schoolId),
+  syncStudentsFromCsv: (csvStudents, academicYear, teacherColumnMapped, manualMatches, schoolId) =>
     ipcRenderer.invoke(
       'db.syncStudentsFromCsv',
       csvStudents,
       academicYear,
       teacherColumnMapped,
-      manualMatches
+      manualMatches,
+      schoolId
     ),
   // SEND → 'db.savePenNote' | 'db.getPenNotesForStudents' | 'db.savePenNoteYear' | 'db.getPenNotesForStudentsYear'
   savePenNote: (studentId, unitNumber, columnType, noteData) =>

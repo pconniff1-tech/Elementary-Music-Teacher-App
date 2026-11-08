@@ -429,8 +429,8 @@ ipcMain.handle('db.getSeatingChart', async (event, chartId, classKey = '') =>
   db.getSeatingChart(chartId, classKey)
 );
 ipcMain.handle('db.createSeatingChart', async (event, payload) => db.createSeatingChart(payload));
-ipcMain.handle('db.clearStaleSeatingChartsForYear', async (event, academicYear) =>
-  db.clearStaleSeatingChartsForYear(academicYear)
+ipcMain.handle('db.clearStaleSeatingChartsForYear', async (event, academicYear, schoolId) =>
+  db.clearStaleSeatingChartsForYear(academicYear, schoolId)
 );
 ipcMain.handle('db.updateSeatingChartName', async (event, chartId, name, classKey = '') =>
   db.updateSeatingChartName(chartId, name, classKey)
@@ -457,6 +457,16 @@ ipcMain.handle('db.deleteInstrument', async (event, id) => db.deleteInstrument(i
 // --- Class IPC handlers ---
 // RECEIVE ← 'db.getClasses' | 'db.addClass' | 'db.updateClass' | 'db.deleteClass'
 ipcMain.handle('db.getClasses', async () => db.getClasses());
+ipcMain.handle('db.getSchools', async () => db.getSchools());
+ipcMain.handle('db.addSchool', async (event, name) => db.addSchool(name));
+ipcMain.handle('db.renameSchool', async (event, id, name) => db.renameSchool(id, name));
+ipcMain.handle('db.updateSchoolStatus', async (event, id, active) =>
+  db.updateSchoolStatus(id, active)
+);
+ipcMain.handle('db.deleteSchool', async (event, id) => db.deleteSchool(id));
+ipcMain.handle('db.archiveTeacher', async (event, schoolId, teacher) =>
+  db.archiveTeacher(schoolId, teacher)
+);
 ipcMain.handle('db.addClass', async (event, cls) => db.addClass(cls));
 ipcMain.handle('db.updateClass', async (event, cls) => db.updateClass(cls));
 ipcMain.handle('db.deleteClass', async (event, id) => db.deleteClass(id));
@@ -680,6 +690,9 @@ ipcMain.handle('db.getImmaScoresForClass', async (event, studentIds) =>
 ipcMain.handle('db.upsertImmaScore', async (event, studentId, academicYear, tonal, rhythm) =>
   db.upsertImmaScore(studentId, academicYear, tonal, rhythm)
 );
+ipcMain.handle('db.importMatsScores', async (event, academicYear, results) =>
+  db.importMatsScores(academicYear, results)
+);
 ipcMain.handle('db.getMatsResultsForClass', async (event, studentIds) =>
   db.getMatsResultsForClass(studentIds)
 );
@@ -733,11 +746,13 @@ ipcMain.handle('mats.resetForRetake', async (event, firestoreDocId) => {
   });
 });
 
-ipcMain.handle('db.previewCsvSync', async (event, csvStudents) => db.previewCsvSync(csvStudents));
+ipcMain.handle('db.previewCsvSync', async (event, csvStudents, schoolId) =>
+  db.previewCsvSync(csvStudents, schoolId)
+);
 ipcMain.handle(
   'db.syncStudentsFromCsv',
-  async (event, csvStudents, academicYear, teacherColumnMapped, manualMatches) =>
-    db.syncStudentsFromCsv(csvStudents, academicYear, teacherColumnMapped, manualMatches)
+  async (event, csvStudents, academicYear, teacherColumnMapped, manualMatches, schoolId) =>
+    db.syncStudentsFromCsv(csvStudents, academicYear, teacherColumnMapped, manualMatches, schoolId)
 );
 ipcMain.handle('db.savePenNote', async (event, studentId, unitNumber, columnType, noteData) =>
   db.savePenNote(studentId, unitNumber, columnType, noteData)
