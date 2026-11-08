@@ -58,6 +58,10 @@
 
 ## 3. Session Logs (Latest First)
 
+### 2026-11-07 — Release recovery
+- The v1.7.0 release attempt returned HTTP 422 after publishing the installer; the public release was missing `latest.yml` and the blockmap. Its tag points to the feature commit whose committed version is still 1.6.6. The local `dist\latest.yml` from that attempt was stale and must not be uploaded.
+- Prepare v1.7.1 from a committed version bump and pre-create its tag and draft release before running `npm run build:release`, so parallel artifact uploads find an existing release rather than racing to create one. Verify the installer, matching blockmap, and `latest.yml` on the draft before publishing it on GitHub.
+
 ### 2026-11-07 — School management modal refinements
 - The modal lists schools before the Add School input, and school names are read-only until Edit is selected; Save persists the name and refreshes the sidebar picker.
 - Selecting a read-only school name independently changes the teacher list inside the modal without switching the sidebar school. The selected school is highlighted, identified in the teacher heading, and used as the target when inactivating a teacher. Opening the modal starts with the sidebar school selected.
